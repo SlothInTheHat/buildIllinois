@@ -31,13 +31,21 @@ export default function InterviewPanel({ problem, onProblemChange }: InterviewPa
     setOutput('Running code...');
 
     try {
-      const response = await axios.post('/api/run-code', { code });
-      const result = response.data;
+      // Call Piston API directly for local dev
+      const response = await axios.post('https://emkc.org/api/v2/piston/execute', {
+        language: 'python',
+        version: '3.10.0',
+        files: [{ content: code }],
+      });
 
-      if (result.success) {
-        setOutput(`✓ Success\n\n${result.output}`);
+      const result = response.data;
+      const output = result.run.stdout || result.run.stderr || result.run.output;
+      const hasError = result.run.code !== 0;
+
+      if (!hasError) {
+        setOutput(`✓ Success\n\n${output.trim()}`);
       } else {
-        setOutput(`✗ Error\n\n${result.error || result.output}`);
+        setOutput(`✗ Error\n\n${output.trim()}`);
       }
 
       setExecutionCount((prev) => prev + 1);
