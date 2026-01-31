@@ -113,20 +113,21 @@ print_list(reversed_head)`,
 ];
 
 /**
- * Fetch up to 50 problems from Supabase database.
- * Assumes the table is named 'problems' with columns:
- * id, title, difficulty, description, starterCode (or starter_code), testCases (or test_cases, JSON)
+ * Fetch problems from Supabase database (LEETCODE PROBLEMS table).
+ * Falls back to local problems if Supabase is unavailable.
  */
 export const loadProblems = async (): Promise<Problem[]> => {
   try {
+    console.log('Attempting to load problems from Supabase...');
     const { data, error } = await supabase
       .from('LEETCODE PROBLEMS')
       .select('*')
-      .limit(50)
-      .order('difficulty', { ascending: true });
+      .limit(2000)
+      .order('Difficulty', { ascending: true });
 
     if (error) {
-      console.error('Error loading problems from Supabase:', error);
+      console.error('Supabase error:', error);
+      console.log('Falling back to local problems');
       return fallbackProblems;
     }
 
@@ -138,19 +139,7 @@ export const loadProblems = async (): Promise<Problem[]> => {
     // Transform the data to match the Problem interface
     const transformed = data.map((row: any) => {
       // Handle various column naming conventions
-      const starterCode = row.starterCode || row.starter_code || row.start_code ||
-        `def solution():
-    """
-    ${row.title || 'Problem'}
-
-    TODO: Implement your solution here
-    """
-    # Write your solution here
-    pass
-
-# Test your solution
-print(solution())`;
-
+      const starterCode = row.starterCode || row.starter_code || row.start_code || '';
       const testCases = (() => {
         let tc = row.testCases || row.test_cases || row.tests || [];
         if (typeof tc === 'string') {
@@ -176,7 +165,7 @@ print(solution())`;
     });
 
     console.log(`Successfully loaded ${transformed.length} problems from Supabase`);
-    return transformed;
+    return transformed.length > 0 ? transformed : fallbackProblems;
   } catch (err) {
     console.error('Failed to load problems:', err);
     return fallbackProblems;
