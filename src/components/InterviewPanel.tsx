@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Play, HelpCircle, CheckSquare, Loader2, Terminal } from 'lucide-react';
 import CodeEditor from './CodeEditor';
 import FeedbackPanel from './FeedbackPanel';
-import type { Problem, SessionFeedback, InterviewerHint } from '../types/index';
+import type { Problem, SessionFeedback } from '../types/index';
 import axios from 'axios';
 
 interface InterviewPanelProps {
@@ -10,7 +10,7 @@ interface InterviewPanelProps {
   onProblemChange: (problemId: string) => void;
 }
 
-export default function InterviewPanel({ problem, onProblemChange }: InterviewPanelProps) {
+export default function InterviewPanel({ problem, onProblemChange: _onProblemChange }: InterviewPanelProps) {
   const [code, setCode] = useState(problem.starterCode);
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
