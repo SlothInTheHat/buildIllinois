@@ -114,11 +114,11 @@ print_list(reversed_head)`,
 
 /**
  * Fetch up to 50 problems from Supabase database.
- * Assumes the table is named 'problems' with columns:
- * id, title, difficulty, description, starterCode (or starter_code), testCases (or test_cases, JSON)
+ * Falls back to local problems if Supabase is unavailable.
  */
 export const loadProblems = async (): Promise<Problem[]> => {
   try {
+    console.log('Attempting to load problems from Supabase...');
     const { data, error } = await supabase
       .from('problems')
       .select('*')
@@ -126,7 +126,8 @@ export const loadProblems = async (): Promise<Problem[]> => {
       .order('difficulty', { ascending: true });
 
     if (error) {
-      console.error('Error loading problems from Supabase:', error);
+      console.error('Supabase error:', error);
+      console.log('Falling back to local problems');
       return fallbackProblems;
     }
 
@@ -137,7 +138,6 @@ export const loadProblems = async (): Promise<Problem[]> => {
 
     // Transform the data to match the Problem interface
     const transformed = data.map((row: any) => {
-      // Handle various column naming conventions
       const starterCode = row.starterCode || row.starter_code || row.start_code || '';
       const testCases = (() => {
         let tc = row.testCases || row.test_cases || row.tests || [];
@@ -162,7 +162,7 @@ export const loadProblems = async (): Promise<Problem[]> => {
     });
 
     console.log(`Successfully loaded ${transformed.length} problems from Supabase`);
-    return transformed;
+    return transformed.length > 0 ? transformed : fallbackProblems;
   } catch (err) {
     console.error('Failed to load problems:', err);
     return fallbackProblems;

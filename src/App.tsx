@@ -19,18 +19,23 @@ function App() {
       try {
         console.log('Fetching problems from Supabase...');
         const data = await loadProblems();
-        console.log('Received problems:', data.length, data);
+        console.log('Received problems:', data.length);
+        console.log('Problem data:', data);
         setProblems(data);
         if (data.length > 0) {
+          console.log('Setting current problem to:', data[0]);
           setCurrentProblem(data[0]);
         } else {
           console.warn('No problems loaded, using default');
-          setCurrentProblem(getDefaultProblem());
+          const defaultProblem = getDefaultProblem();
+          console.log('Default problem:', defaultProblem);
+          setCurrentProblem(defaultProblem);
         }
       } catch (err) {
         console.error('Failed to fetch problems:', err);
         setError('Failed to load problems. Using fallback.');
         const fallback = getDefaultProblem();
+        console.log('Using fallback problem:', fallback);
         setProblems([fallback]);
         setCurrentProblem(fallback);
       } finally {
