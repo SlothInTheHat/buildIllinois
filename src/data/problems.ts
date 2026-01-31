@@ -123,7 +123,7 @@ export const loadProblems = async (): Promise<Problem[]> => {
       .from('LEETCODE PROBLEMS')
       .select('*')
       .limit(2000)
-      .order('Difficulty', { ascending: true });
+      .order('difficulty', { ascending: true });
 
     if (error) {
       console.error('Supabase error:', error);
@@ -139,7 +139,19 @@ export const loadProblems = async (): Promise<Problem[]> => {
     // Transform the data to match the Problem interface
     const transformed = data.map((row: any) => {
       // Handle various column naming conventions
-      const starterCode = row.starterCode || row.starter_code || row.start_code || '';
+      const starterCode = row.starterCode || row.starter_code || row.start_code ||
+        `def solution():
+    """
+    ${row.title || 'Problem'}
+
+    TODO: Implement your solution here
+    """
+    # Write your solution here
+    pass
+
+# Test your solution
+print(solution())`;
+
       const testCases = (() => {
         let tc = row.testCases || row.test_cases || row.tests || [];
         if (typeof tc === 'string') {
