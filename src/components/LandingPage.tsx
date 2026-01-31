@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Brain, Filter, Building2, Tag, Trophy } from 'lucide-react';
 import '../styles/LandingPage.css';
 
