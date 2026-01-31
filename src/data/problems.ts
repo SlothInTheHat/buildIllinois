@@ -120,7 +120,7 @@ print_list(reversed_head)`,
 export const loadProblems = async (): Promise<Problem[]> => {
   try {
     const { data, error } = await supabase
-      .from('problems')
+      .from('LEETCODE PROBLEMS')
       .select('*')
       .limit(50)
       .order('difficulty', { ascending: true });
@@ -138,7 +138,19 @@ export const loadProblems = async (): Promise<Problem[]> => {
     // Transform the data to match the Problem interface
     const transformed = data.map((row: any) => {
       // Handle various column naming conventions
-      const starterCode = row.starterCode || row.starter_code || row.start_code || '';
+      const starterCode = row.starterCode || row.starter_code || row.start_code ||
+        `def solution():
+    """
+    ${row.title || 'Problem'}
+
+    TODO: Implement your solution here
+    """
+    # Write your solution here
+    pass
+
+# Test your solution
+print(solution())`;
+
       const testCases = (() => {
         let tc = row.testCases || row.test_cases || row.tests || [];
         if (typeof tc === 'string') {
@@ -148,11 +160,13 @@ export const loadProblems = async (): Promise<Problem[]> => {
             tc = [];
           }
         }
-        return Array.isArray(tc) ? tc : [];
+        return Array.isArray(tc) && tc.length > 0 ? tc : [
+          { input: 'test input', expectedOutput: 'expected output' }
+        ];
       })();
 
       return {
-        id: row.id || row.problem_id || '',
+        id: String(row.id || row.problem_id || ''),
         title: row.title || '',
         difficulty: (row.difficulty || 'Easy') as 'Easy' | 'Medium' | 'Hard',
         description: row.description || '',
