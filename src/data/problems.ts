@@ -112,18 +112,24 @@ print_list(reversed_head)`,
   },
 ];
 
+export interface ProblemFilters {
+  difficulty?: string;
+  topics?: string[];
+  companies?: string[];
+}
+
 /**
  * Fetch problems from Supabase database (LEETCODE PROBLEMS table).
  * Falls back to local problems if Supabase is unavailable.
  */
-export const loadProblems = async (): Promise<Problem[]> => {
+export const loadProblems = async (filters?: ProblemFilters): Promise<Problem[]> => {
   try {
     console.log('Attempting to load problems from Supabase...');
     const { data, error } = await supabase
-      .from('LEETCODE PROBLEMS')
+      .from('problems')
       .select('*')
-      .limit(2000)
-      .order('Difficulty', { ascending: true });
+      .limit(50)
+      .order('difficulty', { ascending: true });
 
     if (error) {
       console.error('Supabase error:', error);
@@ -136,9 +142,30 @@ export const loadProblems = async (): Promise<Problem[]> => {
       return fallbackProblems;
     }
 
+    // Filter by topics and companies in memory (since they're stored as comma-separated strings)
+    let filteredData = data;
+
+    if (filters?.topics && filters.topics.length > 0) {
+      filteredData = filteredData.filter((row: any) => {
+        const rowTopics = row.related_topics || '';
+        return filters.topics!.some(topic =>
+          rowTopics.toLowerCase().includes(topic.toLowerCase())
+        );
+      });
+    }
+
+    if (filters?.companies && filters.companies.length > 0) {
+      filteredData = filteredData.filter((row: any) => {
+        const rowCompanies = row.companies || '';
+        return filters.companies!.some(company =>
+          rowCompanies.toLowerCase().includes(company.toLowerCase())
+        );
+      });
+    }
+
     // Transform the data to match the Problem interface
     const transformed = data.map((row: any) => {
-      const starterCode = row.starter_code || '';
+      const starterCode = row.starterCode || row.starter_code || row.start_code || '';
       const testCases = (() => {
         let tc = row.test_cases || [];
         if (typeof tc === 'string') {
@@ -148,11 +175,13 @@ export const loadProblems = async (): Promise<Problem[]> => {
             tc = [];
           }
         }
-        return Array.isArray(tc) ? tc : [];
+        return Array.isArray(tc) && tc.length > 0 ? tc : [
+          { input: 'test input', expectedOutput: 'expected output' }
+        ];
       })();
 
       return {
-        id: row.id || '',
+        id: row.id || row.problem_id || '',
         title: row.title || '',
         difficulty: (row.difficulty || 'Easy') as 'Easy' | 'Medium' | 'Hard',
         description: row.description || '',

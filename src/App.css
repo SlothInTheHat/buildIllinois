@@ -421,3 +421,24 @@
   padding: 0.875rem;
   font-size: 1rem;
 }
+
+/* Back button */
+.btn-back {
+  padding: 0.5rem;
+  margin-right: 1rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.btn-back:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  transform: translateY(-2px);
+}
