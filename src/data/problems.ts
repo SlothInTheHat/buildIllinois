@@ -112,18 +112,35 @@ print_list(reversed_head)`,
   },
 ];
 
+export interface ProblemFilters {
+  difficulty?: string;
+  topics?: string[];
+  companies?: string[];
+}
+
 /**
  * Fetch problems from Supabase database (LEETCODE PROBLEMS table).
  * Falls back to local problems if Supabase is unavailable.
  */
-export const loadProblems = async (): Promise<Problem[]> => {
+export const loadProblems = async (filters?: ProblemFilters): Promise<Problem[]> => {
   try {
-    console.log('Attempting to load problems from Supabase...');
-    const { data, error } = await supabase
+    console.log('Attempting to load problems from Supabase...', filters);
+
+    // Build query with filters
+    let query = supabase
       .from('LEETCODE PROBLEMS')
       .select('*')
-      .limit(2000)
-      .order('difficulty', { ascending: true });
+      .limit(2000);
+
+    // Apply difficulty filter
+    if (filters?.difficulty && filters.difficulty !== 'all') {
+      query = query.eq('difficulty', filters.difficulty);
+    }
+
+    // Order by difficulty
+    query = query.order('difficulty', { ascending: true });
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Supabase error:', error);
@@ -136,8 +153,29 @@ export const loadProblems = async (): Promise<Problem[]> => {
       return fallbackProblems;
     }
 
+    // Filter by topics and companies in memory (since they're stored as comma-separated strings)
+    let filteredData = data;
+
+    if (filters?.topics && filters.topics.length > 0) {
+      filteredData = filteredData.filter((row: any) => {
+        const rowTopics = row.related_topics || '';
+        return filters.topics!.some(topic =>
+          rowTopics.toLowerCase().includes(topic.toLowerCase())
+        );
+      });
+    }
+
+    if (filters?.companies && filters.companies.length > 0) {
+      filteredData = filteredData.filter((row: any) => {
+        const rowCompanies = row.companies || '';
+        return filters.companies!.some(company =>
+          rowCompanies.toLowerCase().includes(company.toLowerCase())
+        );
+      });
+    }
+
     // Transform the data to match the Problem interface
-    const transformed = data.map((row: any) => {
+    const transformed = filteredData.map((row: any) => {
       // Handle various column naming conventions
       const starterCode = row.starterCode || row.starter_code || row.start_code ||
         `def solution():
