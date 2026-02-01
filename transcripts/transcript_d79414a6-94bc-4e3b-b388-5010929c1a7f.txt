@@ -1,0 +1,2 @@
+[5:17:54 AM] okay so this seems like a pretty simple question I just have to Loop through the array and try to find this object and if it's not there then I just have to find the index of where it would go if it were added
+[5:18:02 AM]  now I can see one way that I can optimize this would be by using maybe binary search so that's something I can think about

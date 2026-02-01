@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-CheatCode - An interactive coding interview platform where an AI interviewer watches you code, provides hints, and gives comprehensive feedback. Built with React + TypeScript + Vite, deployed on Vercel with serverless functions.
+CheetCode - An interactive coding interview platform where an AI interviewer watches you code, provides hints, and gives comprehensive feedback. Built with React + TypeScript + Vite, deployed on Vercel with serverless functions.
 
 ## Common Commands
 

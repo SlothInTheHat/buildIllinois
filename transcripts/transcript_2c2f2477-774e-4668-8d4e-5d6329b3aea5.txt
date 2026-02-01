@@ -1,0 +1,6 @@
+[5:11:14 AM] all right so I'm just going to walk through the question from what I can understand the only thing that I need to do is Implement a function power of xn on which calculates X to raise the power of n I think the most challenging part of this question is going to be to do with the constraints so I know this x while X only ranges from negative 100 to 100 and can be incredibly large for the exponent
+[5:11:25 AM]  and I'm worried will happen is that there's going to be an overflow error especially because the max is currently set to it seems 99 to the power of 230
+[5:11:31 AM]  and that's that's pretty big right that's way past the integer limit I think
+[5:11:38 AM]  or maybe it's not I have to probably make sure so
+[5:11:41 AM]  I'm just going to start thinking of an algorithm
+[5:16:06 AM] okay here's the code that I have so far I think this is the most optimal way of solving it but I just don't know where to go from here can you give me some advice

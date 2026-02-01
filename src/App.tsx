@@ -3,7 +3,7 @@ import LandingPage, { type ProblemFilters } from './components/LandingPage';
 import InterviewPanel from './components/InterviewPanel';
 import { loadProblems, getDefaultProblem } from './data/problems';
 import type { Problem } from './types/index';
-import { Users, Home, Settings, Sliders } from 'lucide-react';
+import { MessageSquare, Home, Settings, Sliders } from 'lucide-react';
 import './App.css';
 
 // Interview settings type for prompt customization
@@ -102,8 +102,7 @@ function App() {
       <div className="app">
         <header className="app-header">
           <div className="logo">
-            <Users size={32} />
-            <h1>CheatCode</h1>
+            <h1>CheetCode</h1>
           </div>
         </header>
         <main className="app-main" style={{ textAlign: 'center', padding: '2rem' }}>
@@ -117,8 +116,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="logo">
-          <Users size={32} />
-          <h1>CheatCode</h1>
+          <h1>CheetCode</h1>
         </div>
         <div className="header-controls">
           <button className="btn-back" onClick={handleBackToLanding} title="Back to filters">

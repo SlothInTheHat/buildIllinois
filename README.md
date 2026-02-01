@@ -1,4 +1,4 @@
-# CheatCode
+# CheetCode
 
 > Real-time AI coding interviewer powered by Keywords AI - Built for hackathons
 
