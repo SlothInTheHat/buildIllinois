@@ -273,13 +273,20 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpee
     shouldStopRecordingRef.current = true;
 
     // Send collected transcript to parent component
-    if (collectedTranscript.trim() && onStopRecording) {
-      console.log('[AudioTranscriber] Sending collected transcript on stop:', collectedTranscript.substring(0, 50));
-      onStopRecording(collectedTranscript);
+    // Use collectedTranscript if available, otherwise reconstruct from transcriptEntries
+    const textToSend = collectedTranscript.trim() || 
+      transcriptEntries.map(e => e.text).join(' ').trim();
+    
+    if (textToSend && onStopRecording) {
+      console.log('[AudioTranscriber] Sending collected transcript on stop:', textToSend.substring(0, 50));
+      onStopRecording(textToSend);
+    } else {
+      console.log('[AudioTranscriber] No transcript to send');
     }
 
-    // Clear collected transcript
+    // Clear collected transcript and entries for next session
     setCollectedTranscript('');
+    setTranscriptEntries([]);
 
     if (useBrowserAPI || recognitionRef.current) {
       stopBrowserRecognition();
