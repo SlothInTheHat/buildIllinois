@@ -111,6 +111,20 @@ export default function InterviewPanel({
     loadVoices();
   }, []);
 
+  // AI greeting when interview starts
+  useEffect(() => {
+    const greetingMessage = "Welcome to your coding interview! Please take a moment to read through the problem on the left. Once you understand it, start by asking me any clarifying questions you have, or walk me through your initial thought process for solving it. I'm here to help guide you.";
+    
+    // Add greeting to conversation history
+    setConversationHistory([{ role: 'assistant', text: greetingMessage }]);
+    setInterviewerMessage(greetingMessage);
+    
+    // Speak the greeting after a short delay to ensure voices are loaded
+    setTimeout(() => {
+      speakText(greetingMessage);
+    }, 500);
+  }, [problem.id]); // Re-run when problem changes
+
   const handleCodeChange = (value: string | undefined) => {
     setCode(value || '');
   };
