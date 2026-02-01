@@ -159,27 +159,45 @@ app.post('/api/ask-interviewer', async (req, res) => {
     console.log(`[ask-interviewer] Calling OpenAI with mode=${mode}, model=gpt-3.5-turbo`);
     console.log(`[ask-interviewer] API Key: ${apiKey.slice(0, 10)}... (redacted)`);
 
-    const response = await axios.post(
-      OPENAI_API_URL,
-      {
-        model: 'gpt-3.5-turbo',
-        messages: [
+    let response;
+    let retries = 0;
+    const maxRetries = 2;
+
+    while (retries < maxRetries) {
+      try {
+        response = await axios.post(
+          OPENAI_API_URL,
           {
-            role: 'user',
-            content: prompt,
+            model: 'gpt-3.5-turbo',
+            messages: [
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            max_tokens: 200,
+            temperature: 0.7,
           },
-        ],
-        max_tokens: 200,
-        temperature: 0.7,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        timeout: 30000,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
+            },
+            timeout: 30000,
+          }
+        );
+        break; // Success, exit retry loop
+      } catch (error) {
+        if (error.response?.status === 429 && retries < maxRetries - 1) {
+          const waitTime = Math.pow(2, retries) * 1000; // Exponential backoff: 1s, 2s
+          console.log(`[ask-interviewer] Rate limited (429), retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          retries++;
+        } else {
+          throw error; // Re-throw if not a 429 or out of retries
+        }
       }
-    );
+    }
 
     const latency = Date.now() - startTime;
     const message = response.data.choices[0]?.message?.content || 'No response from interviewer';
@@ -281,27 +299,45 @@ Return ONLY the JSON object, no other text:`;
 
     console.log('[end-session] Calling OpenAI with model=gpt-3.5-turbo');
 
-    const response = await axios.post(
-      OPENAI_API_URL,
-      {
-        model: 'gpt-3.5-turbo',
-        messages: [
+    let response;
+    let retries = 0;
+    const maxRetries = 2;
+
+    while (retries < maxRetries) {
+      try {
+        response = await axios.post(
+          OPENAI_API_URL,
           {
-            role: 'user',
-            content: prompt,
+            model: 'gpt-3.5-turbo',
+            messages: [
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            max_tokens: 500,
+            temperature: 0.5,
           },
-        ],
-        max_tokens: 500,
-        temperature: 0.5,
-      },
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-        },
-        timeout: 30000,
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${apiKey}`,
+            },
+            timeout: 30000,
+          }
+        );
+        break; // Success, exit retry loop
+      } catch (error) {
+        if (error.response?.status === 429 && retries < maxRetries - 1) {
+          const waitTime = Math.pow(2, retries) * 1000;
+          console.log(`[end-session] Rate limited (429), retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          retries++;
+        } else {
+          throw error;
+        }
       }
-    );
+    }
 
     const latency = Date.now() - startTime;
     const responseContent = response.data.choices[0]?.message?.content || '{}';
