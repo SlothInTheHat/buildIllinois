@@ -240,11 +240,78 @@
   line-height: 1.6;
 }
 
+/* Recording Section */
+.recording-section {
+  background: rgba(239, 68, 68, 0.1);
+  border: 2px solid rgba(239, 68, 68, 0.5);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin: 1rem 0;
+}
+
+.recording-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.recording-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--error);
+}
+
+.recording-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  background: var(--error);
+  border-radius: 50%;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.recording-transcript {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.recording-transcript h4 {
+  margin: 0 0 0.75rem 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.recording-transcript pre {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
 .interview-actions {
   display: flex;
   gap: 1rem;
   justify-content: center;
   padding-top: 1rem;
+  flex-wrap: wrap;
 }
 
 /* Buttons */

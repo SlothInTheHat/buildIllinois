@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Play, HelpCircle, CheckSquare, Loader2, Terminal, BarChart3 } from 'lucide-react';
+import { Play, HelpCircle, CheckSquare, Loader2, Terminal, BarChart3, Mic, MicOff } from 'lucide-react';
 import CodeEditor from './CodeEditor';
 import FeedbackPanel from './FeedbackPanel';
 import TelemetryPanel from './TelemetryPanel';
@@ -46,6 +46,9 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
     executions: [],
   });
   const [mode, setMode] = useState<'v1' | 'v2'>('v1');
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTranscript, setRecordingTranscript] = useState('');
+  const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
 
   const handleCodeChange = (value: string | undefined) => {
     setCode(value || '');
@@ -124,6 +127,80 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
       console.error('Error:', error.response?.data || error.message);
     } finally {
       setIsAskingInterviewer(false);
+    }
+  };
+
+  const handleStartRecording = () => {
+    setIsRecording(true);
+    setRecordingTranscript('');
+
+    // Connect to WebSocket
+    const ws = new WebSocket('ws://localhost:8765');
+
+    ws.onopen = () => {
+      console.log('Connected to speech server');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const { text, is_final, timestamp } = data;
+
+        // Append to transcript
+        setRecordingTranscript((prev) => {
+          const prefix = prev ? prev + '\n' : '';
+          return prefix + `[${timestamp}] ${text}`;
+        });
+
+        console.log(`[${is_final ? 'FINAL' : 'PARTIAL'}] ${text}`);
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+      alert('Failed to connect to speech server. Make sure speech_server.py is running.');
+      setIsRecording(false);
+    };
+
+    ws.onclose = () => {
+      console.log('Disconnected from speech server');
+    };
+
+    setWsConnection(ws);
+  };
+
+  const handleStopRecording = () => {
+    setIsRecording(false);
+
+    // Close WebSocket connection
+    if (wsConnection) {
+      wsConnection.close();
+      setWsConnection(null);
+    }
+
+    // Save transcript to file
+    if (recordingTranscript) {
+      saveTranscriptToFile(recordingTranscript);
+    }
+  };
+
+  const saveTranscriptToFile = async (transcript: string) => {
+    try {
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const filename = `transcription_${timestamp}.txt`;
+
+      // Save to backend
+      await axios.post('/api/save-transcript', {
+        filename,
+        transcript,
+        problemTitle: problem.title,
+      });
+
+      console.log(`📝 Transcript saved: ${filename}`);
+    } catch (error: any) {
+      console.error('Error saving transcript:', error.message);
     }
   };
 
@@ -280,7 +357,40 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
         </div>
       )}
 
+      {/* Audio Recording Section */}
+      {isRecording && (
+        <div className="recording-section">
+          <div className="recording-header">
+            <div className="recording-indicator">
+              <span className="recording-dot"></span>
+              Recording...
+            </div>
+            <button
+              className="btn btn-secondary"
+              onClick={handleStopRecording}
+            >
+              <MicOff size={18} />
+              Stop Recording
+            </button>
+          </div>
+          <div className="recording-transcript">
+            <h4>Live Transcription:</h4>
+            <pre>{recordingTranscript || 'Listening...'}</pre>
+          </div>
+        </div>
+      )}
+
       <div className="interview-actions">
+        {!isRecording && (
+          <button
+            className="btn btn-secondary"
+            onClick={handleStartRecording}
+          >
+            <Mic size={18} />
+            Record Audio
+          </button>
+        )}
+
         <button
           className="btn btn-hint"
           onClick={handleAskInterviewer}
