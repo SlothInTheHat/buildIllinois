@@ -34,32 +34,43 @@ const splitIntoSentences = (text: string): string[] => {
   return text.match(/[^.!?]+[.!?]+/g)?.map(s => s.trim()) || [text];
 };
 
-interface InterviewPanelProps {
-  problem: Problem;
-  onProblemChange: (problemId: string) => void;
-}
-
 interface SessionTelemetry {
   hints: TelemetryEntry[];
   feedback: TelemetryEntry | null;
   executions: { timestamp: number; latency: number }[];
 }
 
+// Interview settings type (imported from App)
+interface InterviewSettings {
+  interviewerPersonality: string;
+  difficultyLevel: 'Easy' | 'Medium' | 'Hard';
+  interviewStyle: string;
+  feedbackStyle: 'detailed' | 'brief' | 'actionable';
+  scoringStrictness: 'lenient' | 'standard' | 'strict';
+}
 
 interface InterviewPanelProps {
   problem: Problem;
   onProblemChange: (problemId: string) => void;
-  mode: 'v1' | 'v2';
+  mode: 'practice' | 'test';
+  interviewSettings: InterviewSettings;
+  setInterviewSettings: (settings: InterviewSettings) => void;
   showVoiceSettings: boolean;
   setShowVoiceSettings: (show: boolean) => void;
+  showInterviewSettings: boolean;
+  setShowInterviewSettings: (show: boolean) => void;
 }
 
-export default function InterviewPanel({ 
-  problem, 
+export default function InterviewPanel({
+  problem,
   onProblemChange: _onProblemChange,
   mode,
+  interviewSettings,
+  setInterviewSettings,
   showVoiceSettings,
-  setShowVoiceSettings
+  setShowVoiceSettings,
+  showInterviewSettings,
+  setShowInterviewSettings,
 }: InterviewPanelProps) {
   // Generate unique session ID for transcript tracking
   const [sessionId] = useState(() => crypto.randomUUID());
@@ -213,8 +224,13 @@ export default function InterviewPanel({
         code,
         hintsUsed,
         mode,
-        userQuestion: spokenText, // Include what the user asked
-        currentQuestion, // Pass the last interviewer question for context
+        userQuestion: spokenText,
+        currentQuestion,
+        // Pass interview settings for prompt customization
+        interviewerPersonality: interviewSettings.interviewerPersonality,
+        difficultyLevel: interviewSettings.difficultyLevel,
+        interviewStyle: interviewSettings.interviewStyle,
+        interviewMode: mode,
       });
 
       const message = response.data.message;
@@ -305,7 +321,12 @@ export default function InterviewPanel({
         code,
         hintsUsed,
         mode,
-        currentQuestion, // Pass the last interviewer question for context
+        currentQuestion,
+        // Pass interview settings for prompt customization
+        interviewerPersonality: interviewSettings.interviewerPersonality,
+        difficultyLevel: interviewSettings.difficultyLevel,
+        interviewStyle: interviewSettings.interviewStyle,
+        interviewMode: mode,
       });
 
       const message = response.data.message;
@@ -426,6 +447,11 @@ export default function InterviewPanel({
         code,
         hintsUsed,
         executionCount,
+        mode,
+        // Pass feedback settings for prompt customization
+        feedbackStyle: interviewSettings.feedbackStyle,
+        scoringStrictness: interviewSettings.scoringStrictness,
+        interviewMode: mode,
       });
 
       // Extract feedback and telemetry
@@ -560,6 +586,134 @@ export default function InterviewPanel({
                 onChange={(e) => setVoicePitch(parseFloat(e.target.value))}
                 style={{ width: '100%' }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Interview Settings Panel */}
+      {showInterviewSettings && (
+        <div
+          style={{
+            background: '#f0f4ff',
+            border: '1px solid #c7d2fe',
+            borderRadius: '0.5rem',
+            padding: '1rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <h4 style={{ margin: 0 }}>Interview Settings</h4>
+            <span style={{ fontSize: '0.8rem', color: '#6366f1', fontWeight: 500 }}>
+              Mode: {mode === 'practice' ? 'Practice' : 'Test'}
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            {/* Interviewer Personality */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
+                Interviewer Personality
+              </label>
+              <input
+                type="text"
+                value={interviewSettings.interviewerPersonality}
+                onChange={(e) => setInterviewSettings({ ...interviewSettings, interviewerPersonality: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid #c7d2fe',
+                  fontSize: '0.85rem',
+                }}
+                placeholder="e.g., Supportive mentor"
+              />
+            </div>
+
+            {/* Difficulty Level */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
+                Difficulty Level
+              </label>
+              <select
+                value={interviewSettings.difficultyLevel}
+                onChange={(e) => setInterviewSettings({ ...interviewSettings, difficultyLevel: e.target.value as 'Easy' | 'Medium' | 'Hard' })}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid #c7d2fe',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+              </select>
+            </div>
+
+            {/* Interview Style */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
+                Interview Style
+              </label>
+              <input
+                type="text"
+                value={interviewSettings.interviewStyle}
+                onChange={(e) => setInterviewSettings({ ...interviewSettings, interviewStyle: e.target.value })}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid #c7d2fe',
+                  fontSize: '0.85rem',
+                }}
+                placeholder="e.g., Collaborative and guiding"
+              />
+            </div>
+
+            {/* Feedback Style */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
+                Feedback Style
+              </label>
+              <select
+                value={interviewSettings.feedbackStyle}
+                onChange={(e) => setInterviewSettings({ ...interviewSettings, feedbackStyle: e.target.value as 'detailed' | 'brief' | 'actionable' })}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid #c7d2fe',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <option value="detailed">Detailed</option>
+                <option value="brief">Brief</option>
+                <option value="actionable">Actionable</option>
+              </select>
+            </div>
+
+            {/* Scoring Strictness */}
+            <div>
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 500 }}>
+                Scoring Strictness
+              </label>
+              <select
+                value={interviewSettings.scoringStrictness}
+                onChange={(e) => setInterviewSettings({ ...interviewSettings, scoringStrictness: e.target.value as 'lenient' | 'standard' | 'strict' })}
+                style={{
+                  width: '100%',
+                  padding: '0.5rem',
+                  borderRadius: '0.4rem',
+                  border: '1px solid #c7d2fe',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <option value="lenient">Lenient</option>
+                <option value="standard">Standard</option>
+                <option value="strict">Strict</option>
+              </select>
             </div>
           </div>
         </div>

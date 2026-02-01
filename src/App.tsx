@@ -3,8 +3,36 @@ import LandingPage, { type ProblemFilters } from './components/LandingPage';
 import InterviewPanel from './components/InterviewPanel';
 import { loadProblems, getDefaultProblem } from './data/problems';
 import type { Problem } from './types/index';
-import { Users, Home, Settings } from 'lucide-react';
+import { Users, Home, Settings, Sliders } from 'lucide-react';
 import './App.css';
+
+// Interview settings type for prompt customization
+export interface InterviewSettings {
+  // Interviewer prompt variables
+  interviewerPersonality: string;
+  difficultyLevel: 'Easy' | 'Medium' | 'Hard';
+  interviewStyle: string;
+  // Feedback prompt variables
+  feedbackStyle: 'detailed' | 'brief' | 'actionable';
+  scoringStrictness: 'lenient' | 'standard' | 'strict';
+}
+
+// Default settings for each mode
+const practiceDefaults: InterviewSettings = {
+  interviewerPersonality: 'Supportive and encouraging mentor',
+  difficultyLevel: 'Medium',
+  interviewStyle: 'Collaborative and guiding',
+  feedbackStyle: 'actionable',
+  scoringStrictness: 'lenient',
+};
+
+const testDefaults: InterviewSettings = {
+  interviewerPersonality: 'Professional and rigorous evaluator',
+  difficultyLevel: 'Hard',
+  interviewStyle: 'Probing and challenging',
+  feedbackStyle: 'detailed',
+  scoringStrictness: 'standard',
+};
 
 function App() {
   const [showLanding, setShowLanding] = useState(true);
@@ -12,8 +40,16 @@ function App() {
   const [currentProblem, setCurrentProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<'v1' | 'v2'>('v1');
+  const [mode, setMode] = useState<'practice' | 'test'>('practice');
+  const [interviewSettings, setInterviewSettings] = useState<InterviewSettings>(practiceDefaults);
   const [showVoiceSettings, setShowVoiceSettings] = useState(false);
+  const [showInterviewSettings, setShowInterviewSettings] = useState(false);
+
+  // Update settings when mode changes
+  const handleModeChange = (newMode: 'practice' | 'test') => {
+    setMode(newMode);
+    setInterviewSettings(newMode === 'practice' ? practiceDefaults : testDefaults);
+  };
 
   const handleStartInterview = async (filters: ProblemFilters) => {
     setLoading(true);
@@ -91,39 +127,50 @@ function App() {
           <div className="mode-selector">
             <label style={{ fontWeight: 'bold', marginRight: '0.75rem' }}>Mode:</label>
             <button
-              className={`btn ${mode === 'v1' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setMode('v1')}
+              className={`btn ${mode === 'practice' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => handleModeChange('practice')}
               style={{ marginRight: '0.5rem' }}
             >
-              Strict
+              Practice
             </button>
             <button
-              className={`btn ${mode === 'v2' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setMode('v2')}
+              className={`btn ${mode === 'test' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => handleModeChange('test')}
             >
-              Supportive
+              Test
             </button>
           </div>
+          <button
+            className={`btn ${showInterviewSettings ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => setShowInterviewSettings(!showInterviewSettings)}
+            title="Interview Settings"
+            style={{ marginLeft: '0.5rem' }}
+          >
+            <Sliders size={18} />
+          </button>
           <button
             className={`btn ${showVoiceSettings ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setShowVoiceSettings(!showVoiceSettings)}
             title="Voice Settings"
-            style={{ marginLeft: '1rem' }}
+            style={{ marginLeft: '0.5rem' }}
           >
             <Settings size={18} />
-            Voice
           </button>
         </div>
       </header>
 
       <main className="app-main">
         {currentProblem && (
-          <InterviewPanel 
-            problem={currentProblem} 
+          <InterviewPanel
+            problem={currentProblem}
             onProblemChange={handleProblemChange}
             mode={mode}
+            interviewSettings={interviewSettings}
+            setInterviewSettings={setInterviewSettings}
             showVoiceSettings={showVoiceSettings}
             setShowVoiceSettings={setShowVoiceSettings}
+            showInterviewSettings={showInterviewSettings}
+            setShowInterviewSettings={setShowInterviewSettings}
           />
         )}
       </main>

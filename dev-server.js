@@ -35,8 +35,9 @@ console.log(`📁 Transcripts directory ready at: ${TRANSCRIPTS_DIR}`);
 // Using Keywords AI (OpenAI-compatible API)
 const KEYWORDS_AI_API_URL = 'https://api.keywordsai.co/api/chat/completions';
 
-// Prompt ID from Keywords AI dashboard
+// Prompt IDs from Keywords AI dashboard
 const INTERVIEWER_PROMPT_ID = '1565ee';
+const FEEDBACK_PROMPT_ID = 'c20b03';
 
 // POST /api/run-code
 app.post('/api/run-code', async (req, res) => {
@@ -259,10 +260,20 @@ app.post('/api/end-session', async (req, res) => {
     // Debug logging
     console.log('[end-session] Received request body:', JSON.stringify(req.body, null, 2));
 
-    const { problemTitle, problemDescription, code = '', hintsUsed, executionCount } = req.body;
+    const {
+      problemTitle,
+      problemDescription,
+      code = '',
+      hintsUsed,
+      executionCount,
+      mode = 'v1',
+      // New variables for managed prompt
+      feedbackStyle,
+      scoringStrictness,
+      interviewMode,
+    } = req.body;
 
     // Only validate that problemTitle and problemDescription exist
-    // Code can be empty (user might end session without writing code)
     if (!problemTitle || !problemDescription) {
       console.log('[end-session] Validation failed:', {
         hasProblemTitle: !!problemTitle,
@@ -281,43 +292,15 @@ app.post('/api/end-session', async (req, res) => {
       });
     }
 
-    const prompt = `You are a technical interviewer providing feedback after a coding interview session.
+    // Map old mode to new variables (for backward compatibility)
+    const feedback = feedbackStyle || (mode === 'v2' ? 'actionable' : 'detailed');
+    const strictness = scoringStrictness || (mode === 'v2' ? 'lenient' : 'standard');
+    const intMode = interviewMode || (mode === 'v2' ? 'practice' : 'test');
 
-PROBLEM:
-${problemTitle}
-${problemDescription}
+    // Build problem statement
+    const problemStatement = `${problemTitle}\n\n${problemDescription}`;
 
-CANDIDATE'S FINAL CODE:
-\`\`\`python
-${code}
-\`\`\`
-
-SESSION STATS:
-- Hints requested: ${hintsUsed}
-- Code executions: ${executionCount}
-
-Analyze the candidate's performance and provide structured feedback in the following JSON format:
-
-{
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "weaknesses": ["weakness 1", "weakness 2"],
-  "suggestedTopics": ["topic 1", "topic 2", "topic 3"],
-  "overallScore": <number from 1-10>,
-  "detailedFeedback": "<2-3 sentence summary of performance>"
-}
-
-EVALUATION CRITERIA:
-1. Code correctness and completeness
-2. Time and space complexity
-3. Code quality (readability, variable names, structure)
-4. Edge case handling
-5. Problem-solving approach (based on hints needed)
-
-Be honest but constructive. Focus on specific, actionable feedback.
-
-Return ONLY the JSON object, no other text:`;
-
-    console.log('[end-session] Calling Keywords AI with model=claude-sonnet-4-5-20250929');
+    console.log(`[end-session] Calling Keywords AI managed prompt id=${FEEDBACK_PROMPT_ID}, mode=${intMode}`);
 
     let response;
     let retries = 0;
@@ -328,15 +311,19 @@ Return ONLY the JSON object, no other text:`;
         response = await axios.post(
           KEYWORDS_AI_API_URL,
           {
-            model: 'claude-sonnet-4-5-20250929',
-            messages: [
-              {
-                role: 'user',
-                content: prompt,
+            prompt: {
+              prompt_id: FEEDBACK_PROMPT_ID,
+              variables: {
+                feedback_style: feedback,
+                scoring_strictness: strictness,
+                interview_mode: intMode,
+                problem_statement: problemStatement,
+                final_code: code || '# No code written',
+                hints_used: String(hintsUsed || 0),
+                execution_count: String(executionCount || 0),
               },
-            ],
-            max_tokens: 500,
-            temperature: 0.5,
+              override: true,
+            },
           },
           {
             headers: {
@@ -361,18 +348,19 @@ Return ONLY the JSON object, no other text:`;
 
     const latency = Date.now() - startTime;
     const responseContent = response.data.choices[0]?.message?.content || '{}';
-    let feedbackData;
+    const promptTokens = response.data.usage?.prompt_tokens || 0;
+    const completionTokens = response.data.usage?.completion_tokens || 0;
+    const totalTokens = promptTokens + completionTokens;
+    const modelUsed = response.data.model || 'unknown';
 
+    let feedbackData;
     try {
-      // Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+      // Strip markdown code fences if present
       let jsonString = responseContent.trim();
       if (jsonString.startsWith('```')) {
-        // Remove opening code fence (```json or ```)
         jsonString = jsonString.replace(/^```(?:json)?\s*\n?/, '');
-        // Remove closing code fence (```)
         jsonString = jsonString.replace(/\n?```\s*$/, '');
       }
-
       feedbackData = JSON.parse(jsonString);
     } catch (e) {
       console.error('[end-session] Failed to parse feedback JSON:', responseContent);
@@ -385,14 +373,10 @@ Return ONLY the JSON object, no other text:`;
       };
     }
 
-    const promptTokens = response.data.usage?.prompt_tokens || 0;
-    const completionTokens = response.data.usage?.completion_tokens || 0;
-    const totalTokens = promptTokens + completionTokens;
-
     const telemetry = {
       timestamp: Date.now(),
       type: 'feedback',
-      model: 'claude-sonnet-4-5-20250929',
+      model: modelUsed,
       promptTokens,
       completionTokens,
       totalTokens,
@@ -400,9 +384,7 @@ Return ONLY the JSON object, no other text:`;
       success: true,
     };
 
-    console.log(
-      `[end-session] Success - Tokens: ${totalTokens}, Latency: ${latency}ms`
-    );
+    console.log(`[end-session] Success - Model: ${modelUsed}, Tokens: ${totalTokens}, Latency: ${latency}ms`);
 
     return res.status(200).json({
       ...feedbackData,
@@ -410,6 +392,10 @@ Return ONLY the JSON object, no other text:`;
     });
   } catch (error) {
     console.error('[end-session] Error:', error.message);
+    console.error('[end-session] Error details:', {
+      status: error.response?.status,
+      data: error.response?.data,
+    });
 
     if (error.response?.status === 401) {
       return res.status(401).json({

@@ -3,6 +3,9 @@ import axios from 'axios';
 
 const KEYWORDS_AI_URL = 'https://api.keywordsai.co/api/chat/completions';
 
+// Prompt ID from Keywords AI dashboard
+const FEEDBACK_PROMPT_ID = 'c20b03';
+
 interface TelemetryData {
   timestamp: number;
   type: 'feedback';
@@ -14,50 +17,6 @@ interface TelemetryData {
   success: boolean;
   error?: string;
 }
-
-const getFeedbackPrompt = (
-  problemTitle: string,
-  problemDescription: string,
-  finalCode: string,
-  hintsUsed: number,
-  executionCount: number
-) => {
-  return `You are a technical interviewer providing feedback after a coding interview session.
-
-PROBLEM:
-${problemTitle}
-${problemDescription}
-
-CANDIDATE'S FINAL CODE:
-\`\`\`python
-${finalCode}
-\`\`\`
-
-SESSION STATS:
-- Hints requested: ${hintsUsed}
-- Code executions: ${executionCount}
-
-Analyze the candidate's performance and provide structured feedback in the following JSON format:
-
-{
-  "strengths": ["strength 1", "strength 2", "strength 3"],
-  "weaknesses": ["weakness 1", "weakness 2"],
-  "suggestedTopics": ["topic 1", "topic 2", "topic 3"],
-  "overallScore": <number from 1-10>,
-  "detailedFeedback": "<2-3 sentence summary of performance>"
-}
-
-EVALUATION CRITERIA:
-1. Code correctness and completeness
-2. Time and space complexity
-3. Code quality (readability, variable names, structure)
-4. Edge case handling
-5. Problem-solving approach (based on hints needed)
-
-Be honest but constructive. Focus on specific, actionable feedback.
-
-Return ONLY the JSON object, no other text:`;
-};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Set CORS headers
@@ -80,45 +39,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     const startTime = Date.now();
-    const { problemTitle, problemDescription, code, hintsUsed, executionCount } = req.body;
+    const {
+      problemTitle,
+      problemDescription,
+      code,
+      hintsUsed,
+      executionCount,
+      mode = 'v1',
+      // New variables for managed prompt
+      feedbackStyle,
+      scoringStrictness,
+      interviewMode,
+    } = req.body;
 
-    if (!problemTitle || !problemDescription || !code) {
-      return res.status(400).json({ error: 'Missing required fields: problemTitle, problemDescription, code' });
+    if (!problemTitle || !problemDescription) {
+      return res.status(400).json({ error: 'Missing required fields: problemTitle, problemDescription' });
     }
 
     const apiKey = process.env.VITE_KEYWORDS_AI_API_KEY;
     if (!apiKey) {
       console.error('CRITICAL: Keywords AI API key not configured');
-      return res.status(500).json({ 
-        error: 'Keywords AI API key not configured. Please set VITE_KEYWORDS_AI_API_KEY environment variable.' 
+      return res.status(500).json({
+        error: 'Keywords AI API key not configured. Please set VITE_KEYWORDS_AI_API_KEY environment variable.'
       });
     }
 
-    const prompt = getFeedbackPrompt(
-      problemTitle,
-      problemDescription,
-      code,
-      hintsUsed || 0,
-      executionCount || 0
-    );
+    // Map old mode to new variables (for backward compatibility)
+    const feedback = feedbackStyle || (mode === 'v2' ? 'actionable' : 'detailed');
+    const strictness = scoringStrictness || (mode === 'v2' ? 'lenient' : 'standard');
+    const intMode = interviewMode || (mode === 'v2' ? 'practice' : 'test');
 
-    // Call Keywords AI
-    // Using stronger model (gpt-4) for final evaluation
-    console.log('[end-session] Calling Keywords AI with model=gpt-4 for feedback generation');
-    
+    // Build problem statement
+    const problemStatement = `${problemTitle}\n\n${problemDescription}`;
+
+    console.log(`[end-session] Calling Keywords AI managed prompt id=${FEEDBACK_PROMPT_ID}, mode=${intMode}`);
+
     const response = await axios.post(
       KEYWORDS_AI_URL,
       {
-        model: 'gpt-4',
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
+        prompt: {
+          prompt_id: FEEDBACK_PROMPT_ID,
+          variables: {
+            feedback_style: feedback,
+            scoring_strictness: strictness,
+            interview_mode: intMode,
+            problem_statement: problemStatement,
+            final_code: code || '# No code written',
+            hints_used: String(hintsUsed || 0),
+            execution_count: String(executionCount || 0),
           },
-        ],
-        max_tokens: 800,
-        temperature: 0.5,
-        response_format: { type: 'json_object' },
+          override: true,
+        },
       },
       {
         headers: {
@@ -131,16 +102,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const latency = Date.now() - startTime;
     const feedbackText = response.data.choices[0]?.message?.content || '{}';
-    const feedback = JSON.parse(feedbackText);
     const promptTokens = response.data.usage?.prompt_tokens || 0;
     const completionTokens = response.data.usage?.completion_tokens || 0;
     const totalTokens = promptTokens + completionTokens;
+    const modelUsed = response.data.model || 'unknown';
+
+    // Parse the JSON response
+    let feedbackData;
+    try {
+      // Strip markdown code fences if present
+      let jsonString = feedbackText.trim();
+      if (jsonString.startsWith('```')) {
+        jsonString = jsonString.replace(/^```(?:json)?\s*\n?/, '');
+        jsonString = jsonString.replace(/\n?```\s*$/, '');
+      }
+      feedbackData = JSON.parse(jsonString);
+    } catch (e) {
+      console.error('[end-session] Failed to parse feedback JSON:', feedbackText);
+      feedbackData = {
+        strengths: ['Code execution successful'],
+        weaknesses: ['Unable to parse feedback'],
+        suggestedTopics: ['Try again'],
+        overallScore: 5,
+        detailedFeedback: 'Session completed but feedback generation encountered an issue.',
+      };
+    }
 
     // Log telemetry
     const telemetry: TelemetryData = {
       timestamp: Date.now(),
       type: 'feedback',
-      model: 'gpt-4',
+      model: modelUsed,
       promptTokens,
       completionTokens,
       totalTokens,
@@ -148,10 +140,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: true,
     };
 
-    console.log(`[end-session] Success - Tokens: ${totalTokens}, Latency: ${latency}ms`, telemetry);
+    console.log(`[end-session] Success - Model: ${modelUsed}, Tokens: ${totalTokens}, Latency: ${latency}ms`);
 
     return res.status(200).json({
-      ...feedback,
+      ...feedbackData,
       telemetry,
     });
   } catch (error: any) {
@@ -166,7 +158,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const telemetry: TelemetryData = {
       timestamp: Date.now(),
       type: 'feedback',
-      model: 'gpt-4',
+      model: 'unknown',
       promptTokens: 0,
       completionTokens: 0,
       totalTokens: 0,
