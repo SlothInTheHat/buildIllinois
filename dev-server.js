@@ -6,15 +6,16 @@ import axios from 'axios';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '.env.local' });
+dotenv.config(); // Loads from .env by default
 
 const app = express();
-const PORT = 5174;
+const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
 
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+// Using Keywords AI (OpenAI-compatible API)
+const KEYWORDS_AI_API_URL = 'https://api.keywordsai.co/api/chat/completions';
 
 // Helper: Get interviewer prompt V1 (strict)
 const getInterviewerPromptV1 = (problemTitle, problemDescription, currentCode, hintsUsed) => {
@@ -143,11 +144,11 @@ app.post('/api/ask-interviewer', async (req, res) => {
       });
     }
 
-    const apiKey = process.env.VITE_OPENAI_API_KEY;
+    const apiKey = process.env.VITE_KEYWORDS_AI_API_KEY;
     if (!apiKey) {
-      console.error('[ask-interviewer] CRITICAL: OpenAI API key not configured');
+      console.error('[ask-interviewer] CRITICAL: Keywords AI API key not configured');
       return res.status(500).json({
-        error: 'OpenAI API key not configured. Set VITE_OPENAI_API_KEY in .env.local',
+        error: 'Keywords AI API key not configured. Set VITE_KEYWORDS_AI_API_KEY in .env',
       });
     }
 
@@ -156,7 +157,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
         ? getInterviewerPromptV2(problemTitle, problemDescription, code, hintsUsed)
         : getInterviewerPromptV1(problemTitle, problemDescription, code, hintsUsed);
 
-    console.log(`[ask-interviewer] Calling OpenAI with mode=${mode}, model=gpt-3.5-turbo`);
+    console.log(`[ask-interviewer] Calling Keywords AI with mode=${mode}, model=gpt-3.5-turbo`);
     console.log(`[ask-interviewer] API Key: ${apiKey.slice(0, 10)}... (redacted)`);
 
     let response;
@@ -166,7 +167,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
     while (retries < maxRetries) {
       try {
         response = await axios.post(
-          OPENAI_API_URL,
+          KEYWORDS_AI_API_URL,
           {
             model: 'gpt-3.5-turbo',
             messages: [
@@ -253,11 +254,11 @@ app.post('/api/end-session', async (req, res) => {
       });
     }
 
-    const apiKey = process.env.VITE_OPENAI_API_KEY;
+    const apiKey = process.env.VITE_KEYWORDS_AI_API_KEY;
     if (!apiKey) {
-      console.error('[end-session] CRITICAL: OpenAI API key not configured');
+      console.error('[end-session] CRITICAL: Keywords AI API key not configured');
       return res.status(500).json({
-        error: 'OpenAI API key not configured. Set VITE_OPENAI_API_KEY in .env.local',
+        error: 'Keywords AI API key not configured. Set VITE_KEYWORDS_AI_API_KEY in .env',
       });
     }
 
@@ -297,7 +298,7 @@ Be honest but constructive. Focus on specific, actionable feedback.
 
 Return ONLY the JSON object, no other text:`;
 
-    console.log('[end-session] Calling OpenAI with model=gpt-3.5-turbo');
+    console.log('[end-session] Calling Keywords AI with model=gpt-3.5-turbo');
 
     let response;
     let retries = 0;
@@ -306,7 +307,7 @@ Return ONLY the JSON object, no other text:`;
     while (retries < maxRetries) {
       try {
         response = await axios.post(
-          OPENAI_API_URL,
+          KEYWORDS_AI_API_URL,
           {
             model: 'gpt-3.5-turbo',
             messages: [
