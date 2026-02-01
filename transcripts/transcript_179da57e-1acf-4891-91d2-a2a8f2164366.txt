@@ -1,0 +1,10 @@
+[12:39:08 AM] I'm starting to speak English
+[12:40:29 AM] hi all right so I want to explain my thought process real quick I'm just running through the question and what I immediately know this was that film OK Google
+[12:41:20 AM] okay I'm going to keep talking now and I'm going to make sure that this thing goes overflow wait a second it's not it's like kind of shrinking Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello Hello
+[12:43:42 AM] all right so one of the observations that I just made about this is that the problem wants you to make rectangles and figure out if it overlaps or not
+[12:43:47 AM]  I'm looking at just like the examples and can you just
+[12:43:51 AM]  like if you if you just pause for a little bit yeah
+[12:43:53 AM]  shut up
+[12:46:13 AM] all right so I just put a solution in can you just take a look at it and see if it's all right
+[12:47:38 AM] I'm just going to walk through my solution real quick so what I did was I set a variable to left and as the max of the rectangle on the left index and I said a variable right to the minimum of the second index and that basically tracks and I did the same for bottom and I'm basically tracks the corners and so what happened was if left if right was less than left or bottom was less than up then I knew that that the corners were in the wrong order and that the rectangle with overlap so therefore we could just return true and return false and that was basically my thing
+[12:48:40 AM] yes so am I code it's that if left is less than right and that if that if that condition is satisfied and up is also greater than bottom then I would return true well I was explaining was that if left is not it's greater than right or up with less than bottom other than I would return false and that's sort of what the FL statement does

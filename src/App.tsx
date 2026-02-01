@@ -3,7 +3,7 @@ import LandingPage, { type ProblemFilters } from './components/LandingPage';
 import InterviewPanel from './components/InterviewPanel';
 import { loadProblems, getDefaultProblem } from './data/problems';
 import type { Problem } from './types/index';
-import { Brain, Home } from 'lucide-react';
+import { Users, Home } from 'lucide-react';
 import './App.css';
 
 function App() {
@@ -64,7 +64,7 @@ function App() {
       <div className="app">
         <header className="app-header">
           <div className="logo">
-            <Brain size={32} />
+            <Users size={32} />
             <h1>AI Interview Coach</h1>
           </div>
         </header>
@@ -79,7 +79,7 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="logo">
-          <Brain size={32} />
+          <Users size={32} />
           <h1>AI Interview Coach</h1>
         </div>
         <div className="problem-selector">

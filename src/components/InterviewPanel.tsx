@@ -434,23 +434,6 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
               <pre>{problem.description}</pre>
             </div>
           </div>
-
-          {interviewerMessage && (
-            <div className="interviewer-message">
-              <div className="message-header">
-                <HelpCircle size={18} />
-                <span>Interviewer</span>
-                <button
-                  className="btn btn-secondary"
-                  style={{ marginLeft: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
-                  onClick={() => isSpeaking ? stopSpeaking() : speakText(interviewerMessage)}
-                >
-                  {isSpeaking ? '⏸️ Stop' : '🔊 Speak'}
-                </button>
-              </div>
-              <p>{interviewerMessage}</p>
-            </div>
-          )}
         </div>
 
         {/* Resize Handle */}
@@ -512,34 +495,39 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
           
           {/* Right: AI Response */}
           <div className="audio-right-panel">
-            {interviewerMessage && (
-              <div className="interviewer-message">
-                <div className="message-header">
-                  <HelpCircle size={18} />
-                  <span>AI Response</span>
-                  <button
-                    className="btn btn-secondary"
-                    style={{ marginLeft: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
-                    onClick={() => isSpeaking ? stopSpeaking() : speakText(interviewerMessage)}
-                  >
-                    {isSpeaking ? '⏸️ Stop' : '🔊 Speak'}
-                  </button>
-                </div>
-                <p>{interviewerMessage}</p>
+            <div className="conversation-history">
+              <h4 style={{ margin: '0 0 1rem 0', padding: '1rem 1rem 0 1rem', fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-secondary)' }}>AI Responses</h4>
+              <div className="conversation-entries" style={{ flex: 1, overflow: 'auto', padding: '0 1rem 1rem 1rem' }}>
+                {conversationHistory.filter(msg => msg.role === 'assistant').length === 0 && (
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    height: '100%', 
+                    color: 'var(--text-secondary)',
+                    fontStyle: 'italic'
+                  }}>
+                    💬 AI Interview response will appear here
+                  </div>
+                )}
+                {conversationHistory.filter(msg => msg.role === 'assistant').map((msg, idx) => (
+                  <div key={idx} className="conversation-entry assistant-entry" style={{ marginBottom: '0.75rem', padding: '0.75rem', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: 'var(--primary)', fontWeight: 600, fontSize: '0.875rem' }}>
+                      <HelpCircle size={14} />
+                      <span>AI Response #{idx + 1}</span>
+                      <button
+                        className="btn btn-secondary"
+                        style={{ marginLeft: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+                        onClick={() => speakText(msg.text)}
+                      >
+                        🔊
+                      </button>
+                    </div>
+                    <div style={{ fontSize: '0.9rem', lineHeight: '1.6' }}>{msg.text}</div>
+                  </div>
+                ))}
               </div>
-            )}
-            {!interviewerMessage && (
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                height: '100%', 
-                color: 'var(--text-secondary)',
-                fontStyle: 'italic'
-              }}>
-                💬 AI response will appear here
-              </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

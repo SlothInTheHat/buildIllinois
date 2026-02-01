@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Brain, Filter, Building2, Tag, Trophy } from 'lucide-react';
+import { Users, Filter, Building2, Tag, Trophy } from 'lucide-react';
 import '../styles/LandingPage.css';
 
 interface LandingPageProps {
@@ -56,7 +56,7 @@ export default function LandingPage({ onStartInterview }: LandingPageProps) {
   return (
     <div className="landing-page">
       <div className="landing-header">
-        <Brain size={48} className="landing-icon" />
+        <Users size={48} className="landing-icon" />
         <h1>AI Interview Coach</h1>
         <p className="landing-subtitle">
           Practice coding interviews with AI guidance. Select your preferences below.
