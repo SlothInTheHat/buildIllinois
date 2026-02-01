@@ -12,12 +12,14 @@ interface TranscriptEntry {
 interface AudioTranscriberProps {
   sessionId: string;
   onTranscriptUpdate?: (entries: TranscriptEntry[]) => void;
+  onSpeechFinalized?: (text: string) => void;
+  autoSendToAI?: boolean;
 }
 
 // Check if browser supports Web Speech API
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-export default function AudioTranscriber({ sessionId, onTranscriptUpdate }: AudioTranscriberProps) {
+export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpeechFinalized, autoSendToAI = true }: AudioTranscriberProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
@@ -195,6 +197,12 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate }: Audi
     });
 
     setPartialText('');
+
+    // Trigger AI response if enabled
+    if (autoSendToAI && onSpeechFinalized) {
+      console.log('[AudioTranscriber] Triggering AI response for:', text.substring(0, 50));
+      onSpeechFinalized(text);
+    }
 
     // Send to backend API
     try {

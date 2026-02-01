@@ -53,6 +53,8 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
   const [voiceRate, setVoiceRate] = useState(1.0);
   const [voicePitch, setVoicePitch] = useState(1.0);
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
+  const [voiceConversationMode, setVoiceConversationMode] = useState(true);
+  const [conversationHistory, setConversationHistory] = useState<Array<{role: 'user' | 'assistant', text: string}>>([]);
 
   const handleCodeChange = (value: string | undefined) => {
     setCode(value || '');
@@ -95,6 +97,62 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
   const stopSpeaking = () => {
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
+  };
+
+  const handleUserSpeech = async (spokenText: string) => {
+    console.log('[Voice] User said:', spokenText);
+    
+    // Add to conversation history
+    setConversationHistory(prev => [...prev, { role: 'user', text: spokenText }]);
+
+    // Automatically ask the interviewer with the spoken question
+    if (voiceConversationMode) {
+      setIsAskingInterviewer(true);
+      setInterviewerMessage('Thinking...');
+
+      try {
+        console.log('[Voice] Sending to AI:', {
+          problemTitle: problem.title,
+          userQuestion: spokenText,
+          mode,
+        });
+
+        const response = await axios.post('/api/ask-interviewer', {
+          problemTitle: problem.title,
+          problemDescription: problem.description,
+          code,
+          hintsUsed,
+          mode,
+          userQuestion: spokenText, // Include what the user asked
+        });
+
+        const message = response.data.message;
+        setInterviewerMessage(message);
+        setHintsUsed((prev) => prev + 1);
+
+        // Add to conversation history
+        setConversationHistory(prev => [...prev, { role: 'assistant', text: message }]);
+
+        // Auto-speak the response if enabled
+        if (autoSpeak) {
+          speakText(message);
+        }
+
+        // Track telemetry
+        if (response.data.telemetry) {
+          setSessionTelemetry((prev) => ({
+            ...prev,
+            hints: [...prev.hints, response.data.telemetry],
+          }));
+        }
+      } catch (error: any) {
+        const errorMessage = 'Failed to get interviewer response. Please try again.';
+        setInterviewerMessage(errorMessage);
+        console.error('[Voice] Error:', error.response?.data || error.message);
+      } finally {
+        setIsAskingInterviewer(false);
+      }
+    }
   };
 
   const handleRunCode = async () => {
@@ -361,6 +419,14 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
             />
             <span>🔊 Auto-speak responses</span>
           </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', marginLeft: '1rem' }}>
+            <input
+              type="checkbox"
+              checked={voiceConversationMode}
+              onChange={(e) => setVoiceConversationMode(e.target.checked)}
+            />
+            <span>💬 Voice conversation (auto-respond when you speak)</span>
+          </label>
         </div>
       </div>
 
@@ -370,7 +436,11 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
 
       {/* Audio Transcription Section */}
       <div className="audio-section">
-        <AudioTranscriber sessionId={sessionId} />
+        <AudioTranscriber 
+          sessionId={sessionId} 
+          onSpeechFinalized={handleUserSpeech}
+          autoSendToAI={voiceConversationMode}
+        />
       </div>
 
       <div className="interview-workspace">

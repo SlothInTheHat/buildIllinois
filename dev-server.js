@@ -36,7 +36,9 @@ console.log(`📁 Transcripts directory ready at: ${TRANSCRIPTS_DIR}`);
 const KEYWORDS_AI_API_URL = 'https://api.keywordsai.co/api/chat/completions';
 
 // Helper: Get interviewer prompt V1 (strict)
-const getInterviewerPromptV1 = (problemTitle, problemDescription, currentCode, hintsUsed) => {
+const getInterviewerPromptV1 = (problemTitle, problemDescription, currentCode, hintsUsed, userQuestion = null) => {
+  const questionContext = userQuestion ? `\n\nCANDIDATE'S QUESTION:\n"${userQuestion}"\n` : '';
+  
   return `You are a strict technical interviewer at a top tech company conducting a coding interview.
 
 PROBLEM:
@@ -46,7 +48,7 @@ ${problemDescription}
 CANDIDATE'S CURRENT CODE:
 \`\`\`python
 ${currentCode}
-\`\`\`
+\`\`\`${questionContext}
 
 CONTEXT:
 - This is hint request #${hintsUsed + 1}
@@ -54,6 +56,7 @@ CONTEXT:
 - Ask probing questions about their approach
 - Point out potential issues without fixing them
 - Focus on time/space complexity, edge cases, and correctness
+${userQuestion ? '- Respond to their specific question while maintaining interview standards' : ''}
 
 YOUR RESPONSE SHOULD:
 1. Be brief (2-3 sentences max)
@@ -61,12 +64,15 @@ YOUR RESPONSE SHOULD:
 3. Sound like a real interviewer (professional but slightly challenging)
 4. NOT provide code snippets
 5. Encourage them to think through the problem
+${userQuestion ? '6. Address their question directly but don\'t give away the answer' : ''}
 
 Respond as the interviewer now:`;
 };
 
 // Helper: Get interviewer prompt V2 (supportive)
-const getInterviewerPromptV2 = (problemTitle, problemDescription, currentCode, hintsUsed) => {
+const getInterviewerPromptV2 = (problemTitle, problemDescription, currentCode, hintsUsed, userQuestion = null) => {
+  const questionContext = userQuestion ? `\n\nCANDIDATE'S QUESTION:\n"${userQuestion}"\n` : '';
+  
   return `You are a supportive technical interviewer helping a candidate succeed in their coding interview.
 
 PROBLEM:
@@ -76,13 +82,14 @@ ${problemDescription}
 CANDIDATE'S CURRENT CODE:
 \`\`\`python
 ${currentCode}
-\`\`\`
+\`\`\`${questionContext}
 
 CONTEXT:
 - This is hint request #${hintsUsed + 1}
 - The candidate is asking for help - be encouraging and helpful
 - Guide them toward the solution without giving it away entirely
 - Focus on building their confidence while improving their approach
+${userQuestion ? '- They\'ve asked a specific question - address it helpfully' : ''}
 
 YOUR RESPONSE SHOULD:
 1. Be encouraging and supportive (2-4 sentences)
@@ -90,6 +97,7 @@ YOUR RESPONSE SHOULD:
 3. Provide a helpful hint or ask a guiding question
 4. Can include small code hints if they're really stuck (but not the full solution)
 5. Sound like a friendly mentor
+${userQuestion ? '6. Directly answer their question in a helpful, educational way' : ''}
 
 Respond as the supportive interviewer now:`;
 };
@@ -158,7 +166,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
     // Debug logging
     console.log('[ask-interviewer] Received request body:', JSON.stringify(req.body, null, 2));
 
-    const { problemTitle, problemDescription, code = '', hintsUsed, mode = 'v1' } = req.body;
+    const { problemTitle, problemDescription, code = '', hintsUsed, mode = 'v1', userQuestion = null } = req.body;
 
     // Only validate that problemTitle and problemDescription exist
     // Code can be empty (user asking for initial hints)
@@ -182,10 +190,13 @@ app.post('/api/ask-interviewer', async (req, res) => {
 
     const prompt =
       mode === 'v2'
-        ? getInterviewerPromptV2(problemTitle, problemDescription, code, hintsUsed)
-        : getInterviewerPromptV1(problemTitle, problemDescription, code, hintsUsed);
+        ? getInterviewerPromptV2(problemTitle, problemDescription, code, hintsUsed, userQuestion)
+        : getInterviewerPromptV1(problemTitle, problemDescription, code, hintsUsed, userQuestion);
 
     console.log(`[ask-interviewer] Calling Keywords AI with mode=${mode}, model=claude-sonnet-4-5-20250929`);
+    if (userQuestion) {
+      console.log(`[ask-interviewer] User question: "${userQuestion.substring(0, 100)}..."`);
+    }
     console.log(`[ask-interviewer] API Key: ${apiKey.slice(0, 10)}... (redacted)`);
 
     let response;
