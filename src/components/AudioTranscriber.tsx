@@ -75,11 +75,17 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate }: Audi
     recognition.lang = 'en-US';
     recognition.maxAlternatives = 1;
 
+    recognition.onstart = () => {
+      console.log('[AudioTranscriber] Recognition started, listening for speech...');
+    };
+
     recognition.onresult = handleSpeechResult;
     recognition.onerror = handleSpeechError;
     recognition.onend = handleSpeechEnd;
 
     recognitionRef.current = recognition;
+
+    console.log('[AudioTranscriber] Speech recognition initialized');
 
     return () => {
       if (recognitionRef.current) {
@@ -105,6 +111,14 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate }: Audi
 
   const handleSpeechError = (event: SpeechRecognitionErrorEvent) => {
     console.error('[AudioTranscriber] Speech error:', event.error);
+
+    // Don't treat "no-speech" as a fatal error - it's just silence
+    if (event.error === 'no-speech') {
+      console.log('[AudioTranscriber] No speech detected, continuing...');
+      return;
+    }
+
+    // Other errors should stop recording
     setError(`Recognition error: ${event.error}`);
     setIsRecording(false);
   };
@@ -168,13 +182,15 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate }: Audi
     setError(null);
 
     try {
-      // Request microphone permission
-      await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Request microphone permission and test audio input
+      console.log('[AudioTranscriber] Requesting microphone access...');
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log('[AudioTranscriber] Microphone access granted:', stream.getAudioTracks());
 
       if (recognitionRef.current) {
         recognitionRef.current.start();
         setIsRecording(true);
-        console.log('[AudioTranscriber] Recording started');
+        console.log('[AudioTranscriber] Speech recognition started - please speak clearly!');
       }
     } catch (err) {
       setError('Microphone permission denied');
@@ -224,6 +240,11 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate }: Audi
 
       <div className="transcript-display">
         <h4>Live Transcript</h4>
+        {isRecording && transcriptEntries.length === 0 && !partialText && (
+          <div style={{ padding: '1rem', color: '#6b7280', fontStyle: 'italic', textAlign: 'center' }}>
+            🎤 Listening... Speak clearly into your microphone and pause after each sentence.
+          </div>
+        )}
         <div className="transcript-entries">
           {transcriptEntries.map(entry => (
             <div key={entry.id} className="transcript-entry complete">
