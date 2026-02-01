@@ -157,6 +157,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
         : getInterviewerPromptV1(problemTitle, problemDescription, code, hintsUsed);
 
     console.log(`[ask-interviewer] Calling Keywords AI with mode=${mode}, model=gpt-3.5-turbo`);
+    console.log(`[ask-interviewer] API Key: ${apiKey.slice(0, 10)}... (redacted)`);
 
     const response = await axios.post(
       KEYWORDS_AI_URL,
@@ -174,7 +175,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
       {
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${apiKey}`,
+          'Authorization': `Bearer ${apiKey}`,
         },
         timeout: 30000,
       }
