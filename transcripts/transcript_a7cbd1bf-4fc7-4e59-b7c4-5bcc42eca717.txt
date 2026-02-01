@@ -1,0 +1,1 @@
+[4:28:30 AM] hi I was just wondering if you could give me more clarified on the edge cases and if what happens when the rectangles are the same

@@ -14,21 +14,38 @@ interface AudioTranscriberProps {
   onTranscriptUpdate?: (entries: TranscriptEntry[]) => void;
   onSpeechFinalized?: (text: string) => void;
   autoSendToAI?: boolean;
+  isAISpeaking?: boolean;
 }
 
 // Check if browser supports Web Speech API
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpeechFinalized, autoSendToAI = true }: AudioTranscriberProps) {
+export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpeechFinalized, autoSendToAI = true, isAISpeaking = false }: AudioTranscriberProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
   const [partialText, setPartialText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [useBrowserAPI, setUseBrowserAPI] = useState(true);
+  const [wasRecordingBeforeAI, setWasRecordingBeforeAI] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Auto-pause recording when AI starts speaking, resume when it stops
+  useEffect(() => {
+    if (isAISpeaking && isConnected) {
+      console.log('[AudioTranscriber] AI started speaking - pausing recording');
+      setWasRecordingBeforeAI(true);
+      handleStopRecording();
+    } else if (!isAISpeaking && wasRecordingBeforeAI && !isConnected) {
+      console.log('[AudioTranscriber] AI stopped speaking - resuming recording');
+      setWasRecordingBeforeAI(false);
+      setTimeout(() => {
+        handleStartRecording();
+      }, 500); // Small delay to ensure clean transition
+    }
+  }, [isAISpeaking]);
 
   // Browser Speech Recognition
   const startBrowserRecognition = () => {

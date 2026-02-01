@@ -16,17 +16,52 @@ const getGoogleVoices = () => {
   );
 };
 
-// Get the best Google voice
+// Get the best voice - prefer male British
 const getBestGoogleVoice = (): SpeechSynthesisVoice | null => {
-  const googleVoices = getGoogleVoices();
-  if (googleVoices.length === 0) return null;
-
-  // Prefer female voices
-  const femaleVoice = googleVoices.find((voice) =>
-    voice.name.toLowerCase().includes('female')
+  const allVoices = window.speechSynthesis.getVoices();
+  
+  // Priority order for British male voices
+  const preferredVoiceNames = [
+    'Google UK English Male',
+    'Microsoft George Online (Natural) - English (United Kingdom)',
+    'Daniel',
+    'Oliver',
+    'Google UK',
+  ];
+  
+  // Try to find preferred voices by exact name match
+  for (const name of preferredVoiceNames) {
+    const voice = allVoices.find((v) => v.name === name);
+    if (voice) {
+      console.log('[Voice] Selected:', voice.name);
+      return voice;
+    }
+  }
+  
+  // Try to find any British male voice
+  const britishMale = allVoices.find((voice) =>
+    voice.lang.startsWith('en-GB') && 
+    (voice.name.toLowerCase().includes('male') || 
+     voice.name.toLowerCase().includes('george') ||
+     voice.name.toLowerCase().includes('daniel') || 
+     voice.name.toLowerCase().includes('oliver'))
   );
-
-  return femaleVoice || googleVoices[0];
+  
+  if (britishMale) {
+    console.log('[Voice] Selected British male:', britishMale.name);
+    return britishMale;
+  }
+  
+  // Fallback to any British voice
+  const britishVoice = allVoices.find((voice) => voice.lang.startsWith('en-GB'));
+  if (britishVoice) {
+    console.log('[Voice] Selected British voice:', britishVoice.name);
+    return britishVoice;
+  }
+  
+  // Final fallback to first available voice
+  console.log('[Voice] Using fallback voice:', allVoices[0]?.name);
+  return allVoices[0] || null;
 };
 
 // Split text into sentences for better pacing
@@ -95,7 +130,7 @@ export default function InterviewPanel({
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTranscript, setRecordingTranscript] = useState('');
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [voiceRate, setVoiceRate] = useState(1.0);
+  const [voiceRate, setVoiceRate] = useState(1.15);
   const [voicePitch, setVoicePitch] = useState(1.1);
   const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
@@ -850,6 +885,7 @@ export default function InterviewPanel({
               sessionId={sessionId} 
               onSpeechFinalized={handleUserSpeech}
               autoSendToAI={true}
+              isAISpeaking={isSpeaking}
             />
           </div>
           
