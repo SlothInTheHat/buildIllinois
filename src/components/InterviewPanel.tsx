@@ -268,6 +268,7 @@ export default function InterviewPanel({
       });
 
       const response = await axios.post('/api/ask-interviewer', {
+        sessionId,
         problemTitle: problem.title,
         problemDescription: problem.description,
         code,
@@ -365,6 +366,7 @@ export default function InterviewPanel({
       });
 
       const response = await axios.post('/api/ask-interviewer', {
+        sessionId,
         problemTitle: problem.title,
         problemDescription: problem.description,
         code,
@@ -496,6 +498,7 @@ export default function InterviewPanel({
         .join('\n\n');
 
       const response = await axios.post('/api/end-session', {
+        sessionId,
         problemTitle: problem.title,
         problemDescription: problem.description,
         code,

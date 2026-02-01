@@ -104,6 +104,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
           override: true, // Use model/params configured in the prompt
         },
+        metadata: {
+          session_id: req.body.sessionId || 'unknown',
+          problem_title: problemTitle,
+          interview_mode: intMode,
+          hints_used: hintsUsed,
+          endpoint: 'ask-interviewer',
+          timestamp: new Date().toISOString(),
+        },
       },
       {
         headers: {

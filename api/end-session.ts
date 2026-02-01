@@ -92,6 +92,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           },
           override: true,
         },
+        metadata: {
+          session_id: req.body.sessionId || 'unknown',
+          problem_title: problemTitle,
+          interview_mode: intMode,
+          hints_used: hintsUsed,
+          execution_count: executionCount,
+          endpoint: 'end-session',
+          timestamp: new Date().toISOString(),
+        },
       },
       {
         headers: {

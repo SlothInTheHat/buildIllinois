@@ -182,6 +182,14 @@ app.post('/api/ask-interviewer', async (req, res) => {
               },
               override: true,
             },
+            metadata: {
+              session_id: req.body.sessionId || 'unknown',
+              problem_title: problemTitle,
+              interview_mode: intMode,
+              hints_used: hintsUsed,
+              endpoint: 'ask-interviewer',
+              timestamp: new Date().toISOString(),
+            },
           },
           {
             headers: {
@@ -325,6 +333,15 @@ app.post('/api/end-session', async (req, res) => {
                 past_conversation: pastConversation,
               },
               override: true,
+            },
+            metadata: {
+              session_id: req.body.sessionId || 'unknown',
+              problem_title: problemTitle,
+              interview_mode: intMode,
+              hints_used: hintsUsed,
+              execution_count: executionCount,
+              endpoint: 'end-session',
+              timestamp: new Date().toISOString(),
             },
           },
           {
