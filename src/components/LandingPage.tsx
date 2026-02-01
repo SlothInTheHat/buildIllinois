@@ -57,7 +57,7 @@ export default function LandingPage({ onStartInterview }: LandingPageProps) {
     <div className="landing-page">
       <div className="landing-header">
         <Users size={48} className="landing-icon" />
-        <h1>AI Interview Coach</h1>
+        <h1>CheatCode</h1>
         <p className="landing-subtitle">
           Practice coding interviews with AI guidance. Select your preferences below.
         </p>

@@ -50,6 +50,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       feedbackStyle,
       scoringStrictness,
       interviewMode,
+      pastConversation = 'No conversation recorded.',
     } = req.body;
 
     if (!problemTitle || !problemDescription) {
@@ -87,6 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             final_code: code || '# No code written',
             hints_used: String(hintsUsed || 0),
             execution_count: String(executionCount || 0),
+            past_conversation: pastConversation,
           },
           override: true,
         },

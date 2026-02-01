@@ -490,6 +490,11 @@ export default function InterviewPanel({
     setIsEndingSession(true);
 
     try {
+      // Format conversation history for the prompt
+      const formattedConversation = conversationHistory
+        .map((msg, idx) => `${msg.role === 'user' ? 'Candidate' : 'Interviewer'}: ${msg.text}`)
+        .join('\n\n');
+
       const response = await axios.post('/api/end-session', {
         problemTitle: problem.title,
         problemDescription: problem.description,
@@ -501,6 +506,8 @@ export default function InterviewPanel({
         feedbackStyle: interviewSettings.feedbackStyle,
         scoringStrictness: interviewSettings.scoringStrictness,
         interviewMode: mode,
+        // Include conversation history
+        pastConversation: formattedConversation || 'No conversation recorded.',
       });
 
       // Extract feedback and telemetry
@@ -935,8 +942,8 @@ export default function InterviewPanel({
           <div className="audio-left-panel">
             <AudioTranscriber 
               sessionId={sessionId} 
-              onSpeechFinalized={handleUserSpeech}
-              autoSendToAI={true}
+              onStopRecording={handleUserSpeech}
+              autoSendToAI={false}
               isAISpeaking={isSpeaking}
             />
           </div>

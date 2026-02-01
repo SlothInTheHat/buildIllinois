@@ -15,12 +15,13 @@ interface AudioTranscriberProps {
   onSpeechFinalized?: (text: string) => void;
   autoSendToAI?: boolean;
   isAISpeaking?: boolean;
+  onStopRecording?: (collectedText: string) => void;
 }
 
 // Check if browser supports Web Speech API
 const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
 
-export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpeechFinalized, autoSendToAI = true, isAISpeaking = false }: AudioTranscriberProps) {
+export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpeechFinalized, autoSendToAI = false, isAISpeaking = false, onStopRecording }: AudioTranscriberProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
@@ -28,9 +29,11 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpee
   const [error, setError] = useState<string | null>(null);
   const [useBrowserAPI, setUseBrowserAPI] = useState(true);
   const [wasRecordingBeforeAI, setWasRecordingBeforeAI] = useState(false);
+  const [collectedTranscript, setCollectedTranscript] = useState<string>('');
 
   const wsRef = useRef<WebSocket | null>(null);
   const recognitionRef = useRef<any>(null);
+  const shouldStopRecordingRef = useRef<boolean>(false);
 
   // Auto-pause recording when AI starts speaking, resume when it stops
   useEffect(() => {
@@ -101,15 +104,34 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpee
           // Ignore no-speech errors, they're normal
           return;
         }
+        if (event.error === 'aborted') {
+          // Recognition was aborted, don't show error
+          return;
+        }
         setError(`Speech recognition error: ${event.error}`);
-        setIsConnected(false);
-        setIsConnecting(false);
+        // Don't disconnect on error, will auto-restart
       };
 
       recognition.onend = () => {
         console.log('[Browser STT] Ended');
-        setIsConnected(false);
-        setIsConnecting(false);
+        // Auto-restart unless manually stopped
+        if (!shouldStopRecordingRef.current && recognitionRef.current) {
+          console.log('[Browser STT] Auto-restarting...');
+          try {
+            setTimeout(() => {
+              if (recognitionRef.current && !shouldStopRecordingRef.current) {
+                recognitionRef.current.start();
+              }
+            }, 100);
+          } catch (err) {
+            console.error('[Browser STT] Failed to restart:', err);
+            setIsConnected(false);
+            setIsConnecting(false);
+          }
+        } else {
+          setIsConnected(false);
+          setIsConnecting(false);
+        }
       };
 
       recognition.start();
@@ -213,15 +235,18 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpee
       return updated;
     });
 
+    // Collect transcript for later sending
+    setCollectedTranscript(prev => prev ? `${prev} ${text}` : text);
+
     setPartialText('');
 
-    // Trigger AI response if enabled
+    // Only trigger AI response if autoSendToAI is enabled (legacy behavior)
     if (autoSendToAI && onSpeechFinalized) {
-      console.log('[AudioTranscriber] Triggering AI response for:', text.substring(0, 50));
+      console.log('[AudioTranscriber] Auto-sending to AI:', text.substring(0, 50));
       onSpeechFinalized(text);
     }
 
-    // Send to backend API
+    // Send to backend API for transcript storage
     try {
       console.log('[AudioTranscriber] Sending to backend:', { sessionId, timestamp, text: text.substring(0, 50) });
       const response = await axios.post('/api/realtime_audio_chunk', {
@@ -249,6 +274,7 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpee
   }, []);
 
   const handleStartRecording = () => {
+    shouldStopRecordingRef.current = false;
     if (useBrowserAPI || !SpeechRecognition) {
       startBrowserRecognition();
     } else {
@@ -257,6 +283,18 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate, onSpee
   };
 
   const handleStopRecording = () => {
+    // Set flag to prevent auto-restart
+    shouldStopRecordingRef.current = true;
+
+    // Send collected transcript to parent component
+    if (collectedTranscript.trim() && onStopRecording) {
+      console.log('[AudioTranscriber] Sending collected transcript on stop:', collectedTranscript.substring(0, 50));
+      onStopRecording(collectedTranscript);
+    }
+
+    // Clear collected transcript
+    setCollectedTranscript('');
+
     if (useBrowserAPI || recognitionRef.current) {
       stopBrowserRecognition();
     } else {

@@ -30,6 +30,11 @@ export interface SessionFeedback {
   suggestedTopics: string[];
   overallScore?: number;
   detailedFeedback: string;
+  rubricScores?: {
+    beforeCoding: number;
+    duringCoding: number;
+    afterCoding: number;
+  };
   telemetry?: {
     timestamp: number;
     type: 'feedback';

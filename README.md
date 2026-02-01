@@ -1,4 +1,4 @@
-# AI Interview Coach
+# CheatCode
 
 > Real-time AI coding interviewer powered by Keywords AI - Built for hackathons
 

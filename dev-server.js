@@ -271,6 +271,7 @@ app.post('/api/end-session', async (req, res) => {
       feedbackStyle,
       scoringStrictness,
       interviewMode,
+      pastConversation = 'No conversation recorded.',
     } = req.body;
 
     // Only validate that problemTitle and problemDescription exist
@@ -321,6 +322,7 @@ app.post('/api/end-session', async (req, res) => {
                 final_code: code || '# No code written',
                 hints_used: String(hintsUsed || 0),
                 execution_count: String(executionCount || 0),
+                past_conversation: pastConversation,
               },
               override: true,
             },

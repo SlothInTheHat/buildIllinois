@@ -103,7 +103,7 @@ function App() {
         <header className="app-header">
           <div className="logo">
             <Users size={32} />
-            <h1>AI Interview Coach</h1>
+            <h1>CheatCode</h1>
           </div>
         </header>
         <main className="app-main" style={{ textAlign: 'center', padding: '2rem' }}>
@@ -118,7 +118,7 @@ function App() {
       <header className="app-header">
         <div className="logo">
           <Users size={32} />
-          <h1>AI Interview Coach</h1>
+          <h1>CheatCode</h1>
         </div>
         <div className="header-controls">
           <button className="btn-back" onClick={handleBackToLanding} title="Back to filters">

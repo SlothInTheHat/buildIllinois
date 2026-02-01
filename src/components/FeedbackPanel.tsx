@@ -129,6 +129,46 @@ export default function FeedbackPanel({ feedback, onNewInterview, onViewTelemetr
         </div>
       </div>
 
+      {/* Rubric Scores - Color coded by performance */}
+      {feedback.rubricScores && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '1rem',
+          marginBottom: '1.5rem',
+        }}>
+          {Object.entries(feedback.rubricScores).map(([key, value]) => {
+            const getColor = (score: number) => {
+              if (score >= 7) return { bg: 'rgba(16, 185, 129, 0.15)', border: '#10b981', text: '#10b981' }; // green
+              if (score >= 4) return { bg: 'rgba(251, 191, 36, 0.15)', border: '#fbbf24', text: '#fbbf24' }; // yellow
+              return { bg: 'rgba(239, 68, 68, 0.15)', border: '#ef4444', text: '#ef4444' }; // red
+            };
+            
+            const colors = getColor(value);
+            const label = key === 'beforeCoding' ? 'Before Coding' : 
+                         key === 'duringCoding' ? 'During Coding' : 
+                         'After Coding';
+            
+            return (
+              <div key={key} style={{
+                background: colors.bg,
+                border: `2px solid ${colors.border}`,
+                borderRadius: '8px',
+                padding: '1rem',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', fontWeight: 600 }}>
+                  {label}
+                </div>
+                <div style={{ fontSize: '2rem', fontWeight: 700, color: colors.text }}>
+                  {value}/10
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Voice Settings Panel */}
       {showSettings && (
         <div
