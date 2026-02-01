@@ -14,14 +14,102 @@ interface AudioTranscriberProps {
   onTranscriptUpdate?: (entries: TranscriptEntry[]) => void;
 }
 
+// Check if browser supports Web Speech API
+const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
 export default function AudioTranscriber({ sessionId, onTranscriptUpdate }: AudioTranscriberProps) {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>([]);
   const [partialText, setPartialText] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [useBrowserAPI, setUseBrowserAPI] = useState(true);
 
   const wsRef = useRef<WebSocket | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Browser Speech Recognition
+  const startBrowserRecognition = () => {
+    if (!SpeechRecognition) {
+      setError('Browser Speech Recognition not supported. Please use Chrome, Edge, or Safari.');
+      return;
+    }
+
+    setIsConnecting(true);
+    setError(null);
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        console.log('[Browser STT] Started');
+        setIsConnected(true);
+        setIsConnecting(false);
+        setError(null);
+      };
+
+      recognition.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+
+        if (finalTranscript) {
+          console.log('[Browser STT] Final:', finalTranscript);
+          const timestamp = new Date().toLocaleTimeString();
+          addCompleteSentence(finalTranscript, timestamp);
+        }
+
+        if (interimTranscript) {
+          console.log('[Browser STT] Interim:', interimTranscript);
+          setPartialText(interimTranscript);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        console.error('[Browser STT] Error:', event.error);
+        if (event.error === 'no-speech') {
+          // Ignore no-speech errors, they're normal
+          return;
+        }
+        setError(`Speech recognition error: ${event.error}`);
+        setIsConnected(false);
+        setIsConnecting(false);
+      };
+
+      recognition.onend = () => {
+        console.log('[Browser STT] Ended');
+        setIsConnected(false);
+        setIsConnecting(false);
+      };
+
+      recognition.start();
+      recognitionRef.current = recognition;
+    } catch (err: any) {
+      console.error('[Browser STT] Failed to start:', err);
+      setError(`Failed to start speech recognition: ${err.message}`);
+      setIsConnecting(false);
+    }
+  };
+
+  const stopBrowserRecognition = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+    }
+    setIsConnected(false);
+    setPartialText('');
+  };
 
   const connectToServer = () => {
     setIsConnecting(true);
@@ -129,15 +217,34 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate }: Audi
       if (wsRef.current) {
         wsRef.current.close();
       }
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
     };
   }, []);
+
+  const handleStartRecording = () => {
+    if (useBrowserAPI || !SpeechRecognition) {
+      startBrowserRecognition();
+    } else {
+      connectToServer();
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (useBrowserAPI || recognitionRef.current) {
+      stopBrowserRecognition();
+    } else {
+      disconnect();
+    }
+  };
 
   return (
     <div className="audio-transcriber">
       <div className="transcriber-controls">
         <button
           className={`btn ${isConnected ? 'btn-recording' : 'btn-secondary'}`}
-          onClick={isConnected ? disconnect : connectToServer}
+          onClick={isConnected ? handleStopRecording : handleStartRecording}
           disabled={isConnecting}
         >
           {isConnecting ? (
@@ -159,18 +266,34 @@ export default function AudioTranscriber({ sessionId, onTranscriptUpdate }: Audi
         </button>
 
         {error && <span className="error-text">{error}</span>}
+        
+        {SpeechRecognition && (
+          <label style={{ marginLeft: '1rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+            <input
+              type="checkbox"
+              checked={useBrowserAPI}
+              onChange={(e) => setUseBrowserAPI(e.target.checked)}
+              disabled={isConnected}
+            />
+            <span>Use Browser API (no server needed)</span>
+          </label>
+        )}
       </div>
 
       <div className="transcript-display">
         <h4>Live Transcript</h4>
         {isConnected && transcriptEntries.length === 0 && !partialText && (
           <div style={{ padding: '1rem', color: '#6b7280', fontStyle: 'italic', textAlign: 'center' }}>
-            🎤 Listening... Speak into your microphone and pause after each sentence.
+            🎤 Listening... Speak into your microphone.
           </div>
         )}
         {!isConnected && !isConnecting && (
           <div style={{ padding: '1rem', color: '#6b7280', fontStyle: 'italic', textAlign: 'center' }}>
-            ⚠️ Not connected. Make sure Python speech server is running: <code>python speech_server.py</code>
+            {useBrowserAPI ? (
+              <>⚠️ Not recording. Click "Start Recording" to begin.</>
+            ) : (
+              <>⚠️ Not connected. Make sure Python speech server is running: <code>python speech_server.py</code></>
+            )}
           </div>
         )}
         <div className="transcript-entries">

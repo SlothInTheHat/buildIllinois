@@ -48,10 +48,53 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
   const [mode, setMode] = useState<'v1' | 'v2'>('v1');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTranscript, setRecordingTranscript] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [autoSpeak, setAutoSpeak] = useState(true);
+  const [voiceRate, setVoiceRate] = useState(1.0);
+  const [voicePitch, setVoicePitch] = useState(1.0);
   const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
 
   const handleCodeChange = (value: string | undefined) => {
     setCode(value || '');
+  };
+
+  const speakText = (text: string) => {
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = voiceRate;
+    utterance.pitch = voicePitch;
+    utterance.volume = 1.0;
+
+    // Try to use a more natural voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Natural'));
+    if (preferredVoice) {
+      utterance.voice = preferredVoice;
+    }
+
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      console.log('[TTS] Started speaking');
+    };
+
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      console.log('[TTS] Finished speaking');
+    };
+
+    utterance.onerror = (event) => {
+      setIsSpeaking(false);
+      console.error('[TTS] Error:', event);
+    };
+
+    window.speechSynthesis.speak(utterance);
+  };
+
+  const stopSpeaking = () => {
+    window.speechSynthesis.cancel();
+    setIsSpeaking(false);
   };
 
   const handleRunCode = async () => {
@@ -112,8 +155,14 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
         mode,
       });
 
-      setInterviewerMessage(response.data.message);
+      const message = response.data.message;
+      setInterviewerMessage(message);
       setHintsUsed((prev) => prev + 1);
+
+      // Auto-speak the response if enabled
+      if (autoSpeak) {
+        speakText(message);
+      }
 
       // Track telemetry
       if (response.data.telemetry) {
@@ -123,7 +172,8 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
         }));
       }
     } catch (error: any) {
-      setInterviewerMessage('Failed to get interviewer response. Please try again.');
+      const errorMessage = 'Failed to get interviewer response. Please try again.';
+      setInterviewerMessage(errorMessage);
       console.error('Error:', error.response?.data || error.message);
     } finally {
       setIsAskingInterviewer(false);
@@ -173,6 +223,9 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
 
   const handleStopRecording = () => {
     setIsRecording(false);
+
+    // Stop any ongoing speech
+    stopSpeaking();
 
     // Close WebSocket connection
     if (wsConnection) {
@@ -281,7 +334,7 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
         </div>
       </div>
 
-      <div className="interview-header" style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+      <div className="interview-header" style={{ marginTop: '1rem', display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <div>
           <label style={{ fontWeight: 'bold', marginRight: '0.5rem' }}>Interviewer Mode:</label>
           <button
@@ -297,6 +350,17 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
           >
             v2 (Supportive)
           </button>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={autoSpeak}
+              onChange={(e) => setAutoSpeak(e.target.checked)}
+            />
+            <span>🔊 Auto-speak responses</span>
+          </label>
         </div>
       </div>
 
@@ -352,6 +416,13 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
           <div className="message-header">
             <HelpCircle size={18} />
             <span>Interviewer</span>
+            <button
+              className="btn btn-secondary"
+              style={{ marginLeft: 'auto', padding: '0.25rem 0.5rem', fontSize: '0.875rem' }}
+              onClick={() => isSpeaking ? stopSpeaking() : speakText(interviewerMessage)}
+            >
+              {isSpeaking ? '⏸️ Stop' : '🔊 Speak'}
+            </button>
           </div>
           <p>{interviewerMessage}</p>
         </div>
