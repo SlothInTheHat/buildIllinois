@@ -3,6 +3,7 @@ import { Play, HelpCircle, CheckSquare, Loader2, Terminal, BarChart3 } from 'luc
 import CodeEditor from './CodeEditor';
 import FeedbackPanel from './FeedbackPanel';
 import TelemetryPanel from './TelemetryPanel';
+import AudioTranscriber from './AudioTranscriber';
 import type { Problem, SessionFeedback } from '../types/index';
 import type { TelemetryEntry } from '../lib/telemetry';
 import axios from 'axios';
@@ -25,6 +26,9 @@ interface InterviewPanelProps {
 }
 
 export default function InterviewPanel({ problem, onProblemChange: _onProblemChange }: InterviewPanelProps) {
+  // Generate unique session ID for transcript tracking
+  const [sessionId] = useState(() => crypto.randomUUID());
+
   const [code, setCode] = useState(problem.starterCode);
   const [output, setOutput] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -88,6 +92,15 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
     setInterviewerMessage('Thinking...');
 
     try {
+      // Debug logging
+      console.log('[Frontend] Sending request with:', {
+        problemTitle: problem.title,
+        problemDescription: problem.description,
+        code,
+        hintsUsed,
+        mode,
+      });
+
       const response = await axios.post('/api/ask-interviewer', {
         problemTitle: problem.title,
         problemDescription: problem.description,
@@ -212,6 +225,11 @@ export default function InterviewPanel({ problem, onProblemChange: _onProblemCha
 
       <div className="problem-description">
         <pre>{problem.description}</pre>
+      </div>
+
+      {/* Audio Transcription Section */}
+      <div className="audio-section">
+        <AudioTranscriber sessionId={sessionId} />
       </div>
 
       <div className="interview-workspace">

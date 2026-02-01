@@ -442,3 +442,92 @@
   border-color: var(--primary);
   transform: translateY(-2px);
 }
+
+/* Audio Transcriber */
+.audio-section {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.audio-transcriber {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.transcriber-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.btn-recording {
+  background: #dc3545;
+  color: white;
+  border-color: #dc3545;
+  animation: pulse 2s infinite;
+}
+
+.btn-recording:hover {
+  background: #c82333;
+  border-color: #c82333;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.transcript-display {
+  max-height: 300px;
+  overflow-y: auto;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.transcript-display h4 {
+  margin: 0 0 0.75rem 0;
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.transcript-entries {
+  font-family: 'Monaco', 'Courier New', monospace;
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.transcript-entry {
+  margin-bottom: 0.75rem;
+  padding: 0.5rem;
+  background: var(--bg-dark);
+  border-radius: 4px;
+}
+
+.transcript-entry.complete .text {
+  color: var(--text-primary);
+}
+
+.transcript-entry.partial .text {
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.transcript-entry .timestamp {
+  color: var(--secondary);
+  margin-right: 0.75rem;
+  font-weight: 600;
+}
+
+.error-text {
+  color: var(--error);
+  font-size: 0.9rem;
+}

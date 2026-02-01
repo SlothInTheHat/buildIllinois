@@ -5,6 +5,11 @@ import express from 'express';
 import axios from 'axios';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import fs from 'fs/promises';
+import fssync from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { v4 as uuidv4 } from 'uuid';
 
 dotenv.config(); // Loads from .env by default
 
@@ -13,6 +18,19 @@ const PORT = 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// Get __dirname equivalent in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Transcripts directory setup
+const TRANSCRIPTS_DIR = path.join(__dirname, 'transcripts');
+
+// Create transcripts directory on startup (synchronous to avoid top-level await)
+if (!fssync.existsSync(TRANSCRIPTS_DIR)) {
+  fssync.mkdirSync(TRANSCRIPTS_DIR, { recursive: true });
+}
+console.log(`📁 Transcripts directory ready at: ${TRANSCRIPTS_DIR}`);
 
 // Using Keywords AI (OpenAI-compatible API)
 const KEYWORDS_AI_API_URL = 'https://api.keywordsai.co/api/chat/completions';
@@ -136,11 +154,21 @@ app.post('/api/run-code', async (req, res) => {
 app.post('/api/ask-interviewer', async (req, res) => {
   try {
     const startTime = Date.now();
-    const { problemTitle, problemDescription, code, hintsUsed, mode = 'v1' } = req.body;
 
-    if (!problemTitle || !problemDescription || !code) {
+    // Debug logging
+    console.log('[ask-interviewer] Received request body:', JSON.stringify(req.body, null, 2));
+
+    const { problemTitle, problemDescription, code = '', hintsUsed, mode = 'v1' } = req.body;
+
+    // Only validate that problemTitle and problemDescription exist
+    // Code can be empty (user asking for initial hints)
+    if (!problemTitle || !problemDescription) {
+      console.log('[ask-interviewer] Validation failed:', {
+        hasProblemTitle: !!problemTitle,
+        hasProblemDescription: !!problemDescription,
+      });
       return res.status(400).json({
-        error: 'Missing required fields: problemTitle, problemDescription, code',
+        error: 'Missing required fields: problemTitle, problemDescription',
       });
     }
 
@@ -157,7 +185,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
         ? getInterviewerPromptV2(problemTitle, problemDescription, code, hintsUsed)
         : getInterviewerPromptV1(problemTitle, problemDescription, code, hintsUsed);
 
-    console.log(`[ask-interviewer] Calling Keywords AI with mode=${mode}, model=claude-3-5-sonnet-20241022`);
+    console.log(`[ask-interviewer] Calling Keywords AI with mode=${mode}, model=claude-sonnet-4-5-20250929`);
     console.log(`[ask-interviewer] API Key: ${apiKey.slice(0, 10)}... (redacted)`);
 
     let response;
@@ -169,7 +197,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
         response = await axios.post(
           KEYWORDS_AI_API_URL,
           {
-            model: 'claude-3-5-sonnet-20241022',
+            model: 'claude-sonnet-4-5-20250929',
             messages: [
               {
                 role: 'user',
@@ -209,7 +237,7 @@ app.post('/api/ask-interviewer', async (req, res) => {
     const telemetry = {
       timestamp: Date.now(),
       type: 'hint',
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-5-20250929',
       promptTokens,
       completionTokens,
       totalTokens,
@@ -252,11 +280,21 @@ app.post('/api/ask-interviewer', async (req, res) => {
 app.post('/api/end-session', async (req, res) => {
   try {
     const startTime = Date.now();
-    const { problemTitle, problemDescription, code, hintsUsed, executionCount } = req.body;
 
-    if (!problemTitle || !problemDescription || !code) {
+    // Debug logging
+    console.log('[end-session] Received request body:', JSON.stringify(req.body, null, 2));
+
+    const { problemTitle, problemDescription, code = '', hintsUsed, executionCount } = req.body;
+
+    // Only validate that problemTitle and problemDescription exist
+    // Code can be empty (user might end session without writing code)
+    if (!problemTitle || !problemDescription) {
+      console.log('[end-session] Validation failed:', {
+        hasProblemTitle: !!problemTitle,
+        hasProblemDescription: !!problemDescription,
+      });
       return res.status(400).json({
-        error: 'Missing required fields: problemTitle, problemDescription, code',
+        error: 'Missing required fields: problemTitle, problemDescription',
       });
     }
 
@@ -304,7 +342,7 @@ Be honest but constructive. Focus on specific, actionable feedback.
 
 Return ONLY the JSON object, no other text:`;
 
-    console.log('[end-session] Calling Keywords AI with model=claude-3-5-sonnet-20241022');
+    console.log('[end-session] Calling Keywords AI with model=claude-sonnet-4-5-20250929');
 
     let response;
     let retries = 0;
@@ -315,7 +353,7 @@ Return ONLY the JSON object, no other text:`;
         response = await axios.post(
           KEYWORDS_AI_API_URL,
           {
-            model: 'claude-3-5-sonnet-20241022',
+            model: 'claude-sonnet-4-5-20250929',
             messages: [
               {
                 role: 'user',
@@ -351,7 +389,16 @@ Return ONLY the JSON object, no other text:`;
     let feedbackData;
 
     try {
-      feedbackData = JSON.parse(responseContent);
+      // Strip markdown code fences if present (```json ... ``` or ``` ... ```)
+      let jsonString = responseContent.trim();
+      if (jsonString.startsWith('```')) {
+        // Remove opening code fence (```json or ```)
+        jsonString = jsonString.replace(/^```(?:json)?\s*\n?/, '');
+        // Remove closing code fence (```)
+        jsonString = jsonString.replace(/\n?```\s*$/, '');
+      }
+
+      feedbackData = JSON.parse(jsonString);
     } catch (e) {
       console.error('[end-session] Failed to parse feedback JSON:', responseContent);
       feedbackData = {
@@ -370,7 +417,7 @@ Return ONLY the JSON object, no other text:`;
     const telemetry = {
       timestamp: Date.now(),
       type: 'feedback',
-      model: 'claude-3-5-sonnet-20241022',
+      model: 'claude-sonnet-4-5-20250929',
       promptTokens,
       completionTokens,
       totalTokens,
@@ -401,6 +448,64 @@ Return ONLY the JSON object, no other text:`;
   }
 });
 
+// POST /api/realtime_audio_chunk - Save audio transcription to file
+app.post('/api/realtime_audio_chunk', async (req, res) => {
+  try {
+    const startTime = Date.now();
+    const { sessionId, timestamp, text, confidence, isFinal } = req.body;
+
+    console.log('[realtime_audio_chunk] Received:', { sessionId, timestamp, text: text?.substring(0, 50), isFinal });
+
+    // Validate required fields
+    if (!sessionId || !text) {
+      return res.status(400).json({
+        error: 'sessionId and text are required'
+      });
+    }
+
+    // Only write complete sentences to file
+    if (!isFinal) {
+      return res.status(200).json({
+        success: true,
+        message: 'Partial transcript received but not written to file'
+      });
+    }
+
+    // Create transcript filename: transcript_[sessionId].txt
+    const filename = `transcript_${sessionId}.txt`;
+    const filepath = path.join(TRANSCRIPTS_DIR, filename);
+
+    // Format: [HH:MM:SS] sentence text
+    const line = `[${timestamp}] ${text}\n`;
+
+    // Append to file (create if doesn't exist)
+    await fs.appendFile(filepath, line, 'utf8');
+
+    // Get line number by counting lines in file
+    const content = await fs.readFile(filepath, 'utf8');
+    const lineNumber = content.split('\n').filter(l => l.trim()).length;
+
+    const latency = Date.now() - startTime;
+
+    console.log(`[realtime_audio_chunk] ✓ Written to ${filename}:${lineNumber} - "${text.substring(0, 50)}..."`);
+
+    return res.status(200).json({
+      success: true,
+      transcriptPath: `transcripts/${filename}`,
+      lineNumber,
+      telemetry: {
+        timestamp: Date.now(),
+        latency,
+      },
+    });
+  } catch (error) {
+    console.error('[realtime_audio_chunk] Error:', error.message);
+    return res.status(500).json({
+      error: error.message || 'Failed to write transcript',
+    });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(
     `\n🚀 Dev server running on http://localhost:${PORT}`
@@ -408,6 +513,7 @@ app.listen(PORT, () => {
   console.log(`📝 API endpoints ready:
     POST /api/run-code
     POST /api/ask-interviewer
-    POST /api/end-session\n`
+    POST /api/end-session
+    POST /api/realtime_audio_chunk\n`
   );
 });
