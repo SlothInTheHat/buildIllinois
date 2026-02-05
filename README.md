@@ -1,29 +1,35 @@
 # CheetCode
 
-> Real-time AI coding interviewer powered by Keywords AI - Built for hackathons
+> Real-time AI coding interviewer powered by Keywords AI — Built for hackathons
 
 An interactive coding interview platform where an AI interviewer watches you code, provides hints, and gives comprehensive feedback on your performance.
 
-## Features
+---
 
-- **Live Code Editor**: Monaco Editor with Python syntax highlighting
-- **Real-Time Code Execution**: Safe Python code execution via Piston API
-- **AI Interviewer**: Get hints and guidance from an AI interviewer (powered by Keywords AI)
+##  Features
+
+- **Live Code Editor**: Monaco Editor with Python syntax highlighting  
+- **Real-Time Code Execution**: Safe Python code execution via Piston API  
+- **AI Interviewer**: Get hints and guidance from an AI interviewer (powered by Keywords AI)  
 - **Two Interview Modes**:
-  - **v1 (Strict)**: Rigorous technical interviewer focusing on best practices
-  - **v2 (Supportive)**: Encouraging coach that guides you more gently
-- **Comprehensive Feedback**: End-of-session analysis with strengths, weaknesses, and practice suggestions
-- **Multiple Problems**: Practice with curated LeetCode-style problems (Two Sum, Valid Parentheses, etc.)
-- **Session Tracking**: Monitor hints used and code executions
+  - **v1 (Strict)**: Rigorous technical interviewer focusing on best practices  
+  - **v2 (Supportive)**: Encouraging coach that guides you more gently  
+- **Comprehensive Feedback**: End-of-session analysis with strengths, weaknesses, and practice suggestions  
+- **Multiple Problems**: Practice with curated LeetCode-style problems (Two Sum, Valid Parentheses, etc.)  
+- **Session Tracking**: Monitor hints used and code executions  
+
+---
 
 ## Tech Stack
 
-- **Frontend**: React + TypeScript + Vite
-- **Code Editor**: Monaco Editor
-- **Code Execution**: Piston API (sandboxed Python runtime)
-- **AI/LLM**: Keywords AI (prompt versioning, model routing, observability)
-- **Database**: Supabase (optional - for session persistence)
-- **Deployment**: Vercel (serverless functions + static hosting)
+- **Frontend**: React + TypeScript + Vite  
+- **Code Editor**: Monaco Editor  
+- **Code Execution**: Piston API (sandboxed Python runtime)  
+- **AI/LLM**: Keywords AI (prompt versioning, model routing, observability)  
+- **Database**: Supabase (optional — for session persistence)  
+- **Deployment**: Vercel (serverless functions + static hosting)  
+
+---
 
 ## Architecture
 
@@ -140,30 +146,21 @@ Go to your Vercel project settings and add:
 vercel --prod
 ```
 
-## Keywords AI Integration (Hackathon Demo Points)
-
-This project demonstrates advanced LLM ops using Keywords AI:
-
 ### 1. **Prompt Versioning**
-- Two interviewer personas (v1 strict, v2 supportive)
+- 2 Interview types: practice, and test along with multiple personalities and difficulties
 - Switch between them without touching code
 - Set `VITE_INTERVIEWER_MODE=v2` to demo
 
-### 2. **Model Routing**
+### 2. **Model Routing** (old)
 - **Cheap model (GPT-3.5)** for real-time hints → `/api/ask-interviewer`
 - **Strong model (GPT-4)** for final evaluation → `/api/end-session`
+- **Now using claude Sonnet 4.5**
 - Optimizes cost vs. quality
 
 ### 3. **Observability**
 - All prompts and responses logged in Keywords AI dashboard
 - Can debug bad hints and track token usage
-- Show judges: "Here's how we monitor AI quality"
 
-### 4. **Evaluation** (Bonus Points)
-Create a simple eval dataset:
-- 5 test cases with expected hint quality
-- Run through Keywords AI eval framework
-- Show in demo: "We systematically test our AI interviewer"
 
 ## Project Structure
 
@@ -257,8 +254,7 @@ Create a simple eval dataset:
 MIT
 
 ## Built For
-
-This project was built for [Your Hackathon Name] to demonstrate:
+This project was built for [Keywords ai Hackathon] to demonstrate:
 - AI-powered developer tools
 - LLM ops best practices with Keywords AI
 - Real-time code execution
